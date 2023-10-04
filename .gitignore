@@ -1,0 +1,8 @@
+# Ignore node_modules directory
+node_modules/
+
+# Ignore editor and IDE files
+.idea/
+
+# Coverage directory used by tools like jest
+coverage
