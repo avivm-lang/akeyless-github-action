@@ -20,18 +20,18 @@ const dictInputs = {
 };
 
 const arrJsonInput = {
-    sshCertificate: 'ssh-certificate-secrets',
-    pkiCertificate: 'pki-certificate-secrets',
+    sshCertificate: 'ssh-certificates',
+    pkiCertificate: 'pki-certificates',
 }
 
 const certificateRequiredFields = {
-    'ssh-certificate-secrets': ["cert-issuer-name", "cert-username", "public-key-data"],
-    'pki-certificate-secrets': ["cert-issuer-name", "csr-data-base64"]
+    'ssh-certificates': ["cert-issuer-name", "cert-username", "public-key-data"],
+    'pki-certificates': ["cert-issuer-name", "csr-data-base64"]
 }
 
 const fetchAndValidateInput = () => {
-    const params = {
-        accessId: core.getInput('access-id', {required: true}).trim(),
+    let params = {
+        accessId: core.getInput('access-id', {required: true}),
         accessType: core.getInput('access-type'),
         apiUrl: core.getInput('api-url'),
         staticSecrets: core.getInput('static-secrets'),
@@ -49,6 +49,8 @@ const fetchAndValidateInput = () => {
     }
 
     validateStringTypes(params)
+
+    params.accessId = params.accessId.trim()
 
     validateBoolTypes(params)
 
@@ -68,11 +70,11 @@ const fetchAndValidateInput = () => {
 function validateJsonArrayTypes(params) {
     // check for array json types (certificates)
     for (const [paramKey, inputId] of Object.entries(arrJsonInput)) {
-        if (typeof params[paramKey] !== 'string') {
-            throw new Error(`Input ${inputId} should be a serialized JSON with array of certificates params`);
-        }
         if (!params[paramKey]) {
             continue;
+        }
+        if (typeof params[paramKey] !== 'string') {
+            throw new Error(`Input ${inputId} should be a serialized JSON with array of certificates params`);
         }
         try {
             let parsed = JSON.parse(params[paramKey]);

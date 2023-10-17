@@ -32,8 +32,8 @@ async function handleExportSecrets(args) {
             try {
                 await handler(akeylessToken, secrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment, generateSeparateOutput);
             } catch (error) {
-                core.error(`Failed to fetch ${key}: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
-                core.setFailed(`Failed to fetch ${key}: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
+                core.debug(`Failed to fetch ${key}: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
+                core.setFailed(`Failed to fetch secret`);
             }
         } else {
             core.debug(`${key}: Skipping step because no ${key} were specified`);
@@ -51,8 +51,8 @@ async function exportStaticSecrets(akeylessToken, staticSecrets, apiUrl, exportS
         });
 
         const staticSecret = await api.getSecretValue(param).catch(error => {
-            core.error(`getSecretValue Failed: ${JSON.stringify(error)}`);
-            core.setFailed(`getSecretValue Failed: ${JSON.stringify(error)}`);
+            core.debug(`getSecretValue Failed: ${JSON.stringify(error)}`);
+            core.setFailed(`get secret value Failed`);
         });
 
         if (staticSecret === undefined) {
@@ -82,9 +82,8 @@ async function exportDynamicSecrets(akeylessToken, dynamicSecrets, apiUrl, expor
             handleOutput(dynamicSecret, variableName, generateSeparateOutputs, exportSecretsToOutputs, exportSecretsToEnvironment)
         }
     } catch (error) {
-        const errorMessage = `Failed to export dynamic secrets: ${typeof error === 'object' ? JSON.stringify(error) : error}`;
-        core.error(errorMessage);
-        core.setFailed(errorMessage);
+        core.debug(`Failed to export dynamic secrets: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
+        core.setFailed('Failed to export dynamic secrets');
     }
 }
 async function exportRotatedSecrets(akeylessToken, rotatedSecrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment, generateSeparateOutputs) {
@@ -98,8 +97,8 @@ async function exportRotatedSecrets(akeylessToken, rotatedSecrets, apiUrl, expor
         });
 
         let rotatedSecret = await api.getRotatedSecretValue(param).catch(error => {
-            core.error(`getRotatedSecret Failed: ${JSON.stringify(error)}`);
-            core.setFailed(`getRotatedSecret Failed: ${JSON.stringify(error)}`);
+            core.debug(`getRotatedSecret Failed: ${JSON.stringify(error)}`);
+            core.setFailed(`get rotated secret failed`);
         });
 
         if (!rotatedSecret) {

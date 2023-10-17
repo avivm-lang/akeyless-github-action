@@ -2,8 +2,9 @@
   "name": "akeyless-action",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
+    "package": "ncc build src/index.js -o dist",
     "test": "jest --coverage --verbose"
   },
   "keywords": [],

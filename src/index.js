@@ -27,8 +27,8 @@ async function run() {
         let akeylessLoginResponse = await akeylessLogin(accessId, accessType, apiUrl);
         akeylessToken = akeylessLoginResponse['token'];
     } catch (error) {
-        core.error(`Failed to login to Akeyless: ${error}`);
-        core.setFailed(`Failed to login to Akeyless: ${error}`);
+        core.debug(`Failed to login to Akeyless: ${error}`);
+        core.setFailed(`Failed to login to Akeyless`);
         return;
     }
 
@@ -57,7 +57,7 @@ if (require.main === module) {
         run();
     } catch (error) {
         core.debug(error.stack);
-        core.setFailed(error.message);
+        core.setFailed('Akeyless action has failed');
         core.debug(error.message);
     }
 }

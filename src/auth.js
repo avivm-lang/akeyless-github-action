@@ -3,11 +3,12 @@ const akeyless = require('akeyless');
 const akeylessApi = require('./akeyless_api');
 const akeylessCloud = require('akeyless-cloud-id')
 
-function handleActionFail(message) {
-    core.debug(message);
-    core.setFailed(message);
+function handleActionFail(message, debugMessage) {
+    core.debug(debugMessage);  // Only visible with ACTIONS_RUNNER_DEBUG=true
+    core.setFailed(message);   // Always visible
     throw new Error(message);
 }
+
 
 async function accessKeyLogin(apiUrl, accessId) {
     const accessKey = core.getInput('access-key');
@@ -79,7 +80,7 @@ async function loginHelper(opts, apiUrl) {
         const authResult = await api.auth(authBody)
         return authResult
     } catch (error) {
-        handleActionFail(`Failed to login to AKeyless: ${typeof error === 'object' ? JSON.stringify(error) : error}`)
+        handleActionFail('Failed to login to Akeyless', `Failed to login to AKeyless: ${typeof error === 'object' ? JSON.stringify(error) : error}`)
     }
 }
 
@@ -100,7 +101,7 @@ async function akeylessLogin(accessId, accessType, apiUrl) {
         core.debug('fetch token');
         return login[accessType](apiUrl, accessId);
     } catch (error) {
-        handleActionFail(error.message);
+        handleActionFail('failed to fetch token', error.message);
     }
 }
 

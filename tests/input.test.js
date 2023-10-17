@@ -23,11 +23,11 @@ describe('testing input', () => {
             'static-secrets': '{"/some/static/secret":"my_first_secret"}',
             'dynamic-secrets': '{"/some/dynamic/secret":"my_first_secret"}',
             'rotated-secrets': '{"/some/rotated/secret":"my_first_secret"}',
-            'ssh-certificate-secrets': '[{ "cert-issuer-name": "sshCert", "cert-username": "ubuntu", "public-key-data": "ssh-rsa AAAAB", "output-name": "my_first_secret"}]',
-            'pki-certificate-secrets': '[{ "cert-issuer-name": "pkiCert", "csr-data-base64": "LS0tL", "output-name": "my_first_secret"}]',
+            'ssh-certificates': '[{ "cert-issuer-name": "sshCert", "cert-username": "ubuntu", "public-key-data": "ssh-rsa AAAAB", "output-name": "my_first_secret"}]',
+            'pki-certificates': '[{ "cert-issuer-name": "pkiCert", "csr-data-base64": "LS0tL", "output-name": "my_first_secret"}]',
             'export-secrets-to-outputs': true,
             'export-secrets-to-environment': true,
-            'parse-dynamic-secrets': false,
+            'generate-separate-output': false,
         };
     })
   it('Input is all good', () => {
@@ -38,11 +38,11 @@ describe('testing input', () => {
       'staticSecrets': JSON.parse(inputToOutputMap['static-secrets']),
       'dynamicSecrets': JSON.parse(inputToOutputMap['dynamic-secrets']),
       'rotatedSecrets': JSON.parse(inputToOutputMap['rotated-secrets']),
-      'sshCertificate': JSON.parse(inputToOutputMap['ssh-certificate-secrets']),
-      'pkiCertificate': JSON.parse(inputToOutputMap['pki-certificate-secrets']),
+      'sshCertificate': JSON.parse(inputToOutputMap['ssh-certificates']),
+      'pkiCertificate': JSON.parse(inputToOutputMap['pki-certificates']),
       'exportSecretsToOutputs': true,
       'exportSecretsToEnvironment': true,
-      'parseDynamicSecrets': false,
+      'generateSeparateOutput': false,
     };
     core.getInput = jest.fn((inputName) => {
       return inputToOutputMap[inputName]

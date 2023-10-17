@@ -29,6 +29,9 @@ inputs:
   k8s-service-account-token:
     description: "The K8S service account token"
     required: false
+  ca-certificate:
+    description: 'The CA certificate for the authentication to gateway'
+    required: false
 
   # secrets input
   static-secrets:
@@ -64,4 +67,4 @@ outputs:
     description: 'Akeyless Token'
 runs:
   using: 'node20'
-  main: 'src/index.js'
+  main: 'dist/index.js'

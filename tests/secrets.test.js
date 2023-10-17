@@ -81,7 +81,7 @@ describe('testing secret exports', () => {
       apiUrl: 'https://api.akeyless.io',
       exportSecretsToOutputs: true,
       exportSecretsToEnvironment: true,
-      parseDynamicSecrets: false,
+      generateSeparateOutput: false,
       sshCertificate: undefined,
       pkiCertificate: undefined
     }
@@ -131,7 +131,7 @@ describe('testing secret exports', () => {
       apiUrl: 'https://api.akeyless.io',
       exportSecretsToOutputs: true,
       exportSecretsToEnvironment: true,
-      parseDynamicSecrets: false,
+      generateSeparateOutput: false,
       sshCertificate: undefined,
       pkiCertificate: undefined
     }
