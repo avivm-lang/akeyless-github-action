@@ -14,9 +14,9 @@ async function run() {
         rotatedSecrets,
         sshCertificate,
         pkiCertificate,
+        token,
         exportSecretsToOutputs,
-        exportSecretsToEnvironment,
-        generateSeparateOutput} =
+        exportSecretsToEnvironment} =
         input.fetchAndValidateInput();
 
     core.debug(`access id: ${accessId}`);
@@ -24,8 +24,12 @@ async function run() {
 
     let akeylessToken;
     try {
-        let akeylessLoginResponse = await akeylessLogin(accessId, accessType, apiUrl);
-        akeylessToken = akeylessLoginResponse['token'];
+        if (token != "") {
+            akeylessToken = token
+        } else {
+            let akeylessLoginResponse = await akeylessLogin(accessId, accessType, apiUrl);
+            akeylessToken = akeylessLoginResponse['token'];
+        }
     } catch (error) {
         core.debug(`Failed to login to Akeyless: ${error}`);
         core.setFailed(`Failed to login to Akeyless`);
@@ -42,7 +46,6 @@ async function run() {
         apiUrl,
         exportSecretsToOutputs,
         exportSecretsToEnvironment,
-        generateSeparateOutput,
         sshCertificate,
         pkiCertificate
     }

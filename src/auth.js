@@ -1,6 +1,8 @@
 const core = require('@actions/core');
 const akeyless = require('akeyless');
 const akeylessApi = require('./akeyless_api');
+const fs = require('fs');
+const path = require('path');
 const akeylessCloud = require('akeyless-cloud-id')
 
 function handleActionFail(message, debugMessage) {
@@ -61,9 +63,22 @@ async function gcpLogin(apiUrl, accessId) {
 async function kubernetesLogin(apiUrl, accessId) {
     const gatewayUrl = core.getInput('gateway-url')
     const authConfigName = core.getInput('k8s-auth-config-name')
-    const serviceAccountToken = core.getInput('k8s-service-account-token')
+    const serviceAccountToken = await readK8SServiceAccountJWT()
     opts = {'access-id': accessId, 'access-type': "k8s", 'k8s-auth-config-name': authConfigName, 'gateway-url': gatewayUrl, 'k8s-service-account-token': serviceAccountToken}
     return loginHelper(opts, apiUrl)
+}
+
+async function readK8SServiceAccountJWT() {
+    const DefServiceAccountFile  = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+    try {
+        const data = await fs.promises.readFile(path.resolve(DefServiceAccountFile), 'utf8');
+        const trimmedData = data.trim();
+        const base64Token = Buffer.from(trimmedData).toString('base64');
+        return base64Token;
+    } catch (err) {
+        throw new Error(`Error reading the service account JWT: ${err.message}`);
+    }
 }
 
 async function uidLogin(apiUrl, accessId) {

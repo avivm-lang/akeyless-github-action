@@ -6,16 +6,11 @@
         - [Inputs](#inputs)
         - [Outputs](#outputs)
             - [Default Outputs](#default-outputs)
-            - [Parsed Outputs](#parsed-outputs)
+            - [Extracting from json by field name](#extracting-from-json-by-field-name)
         - [Debugging](#debugging)
-        - [Job Permissions Requirement](#job-permissions-requirement)
         - [Examples](#examples)
-            - [Live Demos](#live-demos)
             - [Static Secrets Demo](#static-secrets-demo)
             - [Dynamic Secrets Demos](#dynamic-secrets-demos)
-                - [Default Output](#default-output)
-                - [Parsed Output](#parsed-output)
-                    - [Using a Prefix](#using-a-prefix)
             - [Rotated Secrets Demo](#rotated-secrets-demo)
             - [SSH Certificates Demo](#ssh-certificates-demo)
             - [PKI Certificates Demo](#pki-certificates-demo)
@@ -28,9 +23,9 @@
                 - [K8S Auth Method](#K8S-auth-method)
                 - [Universal Identity Auth Method](#universal-identity-auth-method)
                 - [Access Key Auth Method](#access-key-auth-method)
+                - [Akeyless token](#akeless-token)
             - [TLS Certificate](#tls-certificate)
             - [Setting up JWT Auth](#setting-up-jwt-auth)
-        - [Feature Requests \& Issues](#feature-requests--issues)
 
 ## Introduction
 
@@ -43,29 +38,29 @@ This guide describes how to use our various Authentication Methods to fetch [Sta
 
 ### Inputs
 
-| Name | Required | Type      | Value                                                                                                                                                                                                                               |
-|------|----------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **access-id** | Yes | `string`  | The `access id` for your auth method.                                                                                                                                                                                                 |
-| **access-type**  | No | `string`  | Default: `jwt`. The login method to use, must be `jwt`/`access_key`/`universal_identity`/`aws_iam`/`azure_ad`/`gcp`/`k8s`.                                                                                                        |
-| **api-url** | No | `string`  | Default: `https://api.akeyless.io`. The API endpoint to use.                                                                                                                                                                        |
-| **static-secrets** | No | `string`  | A JSON object as a string, with a list of static secrets to fetch/export.  The key should be the path to the secret and the value should be the name of the environment variable/output to save it to.                              |
-| **dynamic-secrets** | No | `string`  | A JSON object as a string, with a list of dynamic secrets to fetch/export.  The key should be the path to the secret and the value should be the name of the environment variable/output to save it to.                             |
-| **rotated-secrets** | No | `string`  | A JSON object as a string, with a list of rotated secrets to fetch/export.  The key should be the path to the secret and the value should be the name of the environment variable/output to save it to.                             |
-| **ssh-certificates** | No | `string`  | A JSON object as a string, with a list of SSH certificates params object. Certificate issuer name, certificate username, public key data, and output name should be the name of the environment variable/output to save it to. |
-| **pki-certificates** | No | `string`  | A JSON object as a string, with a list of PKI certificates params object. Certificate issuer name, CSR data, and output name should be the name of the environment variable/output to save it to.                                 |
-| **export-secrets-to-outputs** | No | `boolean` | Default: `true`. True/False to denote if secrets should be exported as environment variables.                                                                                                                                       |
-| **export-secrets-to-environment** | No | `boolean` | Default: `true`. True/False to denote if secrets should be exported as action outputs.                                                                                                                                              |
-| **generate-separate-output** | No | `boolean` | Default: `false`. True/False to denote if dynamic/rotated secrets will be broken up into individual outputs/env vars. See the parsed dynamic or rotated secrets demos.|
-| **access-key** | No | `string`  | Access key (relevant only for access-type=access_key).                                                                                                                                                                              |
-| **gcp-audience** | No | `string`  | GCP audience to use in signed JWT (relevant only for access-type=gcp).                                                                                                                                                              |
-| **gateway-url** | No | `string`  | Gateway URL for the K8s authenticated (relevant only for access-type=k8s/oauth2).                                                                                                                                                   |
-| **k8s-auth-config-name** | No | `string`  | The K8s Auth config name (relevant only for access-type=k8s).                                                                                                                                                                       |
-| **k8s-service-account-token** | No | `string`  | The K8s service account token (relevant only for access-type=k8s).                                                                                                                                                                                                     |
-| **uid_token** | No | `string`  | The Universal Identity token (relevant only for access-type=universal_identity).                                                                                                                                                    |
+| Name                              | Required | Type      | Value                                                                                                                      |
+|-----------------------------------|----------|-----------|----------------------------------------------------------------------------------------------------------------------------|
+| **access-id**                     | No       | `string`  | The `access id` for your auth method. If token is not provided this field is required.                                     |
+| **access-type**                   | No       | `string`  | Default: `jwt`. The login method to use. Valid options are `jwt`/`access_key`/`universal_identity`/`aws_iam`/`azure_ad`/`gcp`/`k8s`. |
+| **token**                         | No       | `string`  | A valid Akeyless token.                                                                                                   |
+| **api-url**                       | No       | `string`  | Default: `https://api.akeyless.io`. The API endpoint to use.                                                               |
+| **static-secrets**                | No       | `string`  | A YAML list representing static secrets to fetch.                                                                          |
+| **dynamic-secrets**               | No       | `string`  | A YAML list representing dynamic secrets to fetch.                                                                         |
+| **rotated-secrets**               | No       | `string`  | A YAML list representing rotated secrets to fetch.                                                                         |
+| **ssh-certificates**              | No       | `string`  | A YAML list representing ssh certificates to fetch.                                                                        |
+| **pki-certificates**              | No       | `string`  | A YAML list representing pki certificates to fetch.                                                                        |
+| **export-secrets-to-outputs**     | No       | `boolean` | Default: `true`. True/False to denote if secrets should be exported as environment variables.                              |
+| **export-secrets-to-environment** | No       | `boolean` | Default: `true`. True/False to denote if secrets should be exported as action outputs.                                     |
+| **access-key**                    | No       | `string`  | Access key (relevant only for access-type=`access_key`).                                                                     |
+| **gcp-audience**                  | No       | `string`  | GCP audience to use in signed JWT (relevant only for access-type=`gcp`).                                                     |
+| **gateway-url**                   | No       | `string`  | Gateway URL for the K8s authenticated (relevant only for access-type=`k8s`/`oauth2`).                                          |
+| **k8s-auth-config-name**          | No       | `string`  | The K8s Auth config name (relevant only for access-type=`k8s`).                                                              |
+| **k8s-service-account-token**     | No       | `string`  | The K8s service account token (relevant only for access-type=`k8s`).                                                         |
+| **uid_token**                     | No       | `string`  | The Universal Identity token (relevant only for access-type=universal_identity).                                           |
 
 ### Outputs
 
-The job outputs are determined by the values set in your `static-secrets`/`dynamic-secrets`/`rotated-secrets`/`ssh-certificates`/`pki-certificates` inputs, as well as whether or not the `export-secrets-to-outputs` is set to true (which it is by default).
+The job outputs are determined by the values set in your `static-secrets`/`dynamic-secrets`/`rotated-secrets`/`ssh-certificates`/`pki-certificates` inputs.
 
 ##### Default Outputs
 
@@ -76,88 +71,36 @@ The default behavior will create a single output/env variable that uses the name
 | outputs | use `${{ steps.JOB_NAME.outputs.SECRET_NAME }}` |
 | environment variables | use `${{ env.SECRET_NAME }}` |
 
-##### Parsed Outputs (relevant only for dynamic and rotated secrets)
+## Extracting from JSON by field name
 
-If you enabled `generate-separate-output: true`, you'll get each of the values in their own output/env variable automatically. For example, if your dynamic secret is `{ "id": "", "username": "", "password": "" }`, the outputs will be:
+For each Akeyless secret you can extract a specific field out of the JSON by adding the field key name.
 
-| Name | Value |
-|------|-------|
-| job outputs | `${{ steps.job-name.outputs.id }}` |
-|  | `${{ steps.job-name.outputs.username }}` |
-|  | `${{ steps.job-name.outputs.password }}` |
-| environment variables | `${{ env.id }}` |
-|  | `${{ env.username }}` |
-|  | `${{ env.password }}` |
+For example, for the following static secret value name "github-static-secret-json":
+```json
+{
+  "imp": "needed",
+  "no": "no_need"
+}
+```
 
-See the parsed dynamic or rotated secrets examples below for a more detailed explanation.
+We can use:
+
+```yaml
+    - name: "/akeyless-github-action/github-static-secret-json"
+      output-name: "my_first_secret"
+      key: "imp"
+```
+
+and in "steps.output.my_first_secret" the value will be "needed".
+
 
 ### Debugging
-There is an option to get more informative logs from the Akeyless Github Action by setting the secret or variable in the repository that contains the workflow: ACTIONS_RUNNER_DEBUG to true.
+There is an option to get more detailed logs from the Akeyless Github Action by setting the `ACTIONS_RUNNER_DEBUG` secret or variable to `true` in the repository that contains the workflow.
 > ⚠️ **Important**: Setting `ACTIONS_RUNNER_DEBUG` to `true` can expose sensitive information in your error logs. Use with caution.
-
-
-### Job Permissions Requirement
-
-The default usage relies on using the GitHub JWT to login to Akeyless.  To make this available, you have to configure it in your job workflow:
-
-```
-jobs:
-  my_job:
-    #---------Required---------#
-    permissions: 
-      id-token: write
-      contents: read
-    #--------------------------#
-```
-> ⚠️ If this is not present, the akeyless-action step will fail with the following error `Failed to login to Akeyless: Error: Failed to fetch Github JWT: Error message: Unable to get ACTIONS\_ID\_TOKEN\_REQUEST\_URL env variable`
-
-### Outputs
-
-The job outputs are determined by the values set in your `static-secrets`/`dynamic-secrets`/`rotated-secrets`/`ssh-certificates`/`pki-certificates` inputs, as well as whether or not the `export-secrets-to-outputs` is set to true (which it is by default).
-
-
-##### Default Outputs
-
-The default behavior will create a single output/env variable that uses the name you set for the output.
-
-| Name | Value |
-|------|-------|
-| outputs | use `${{ steps.JOB_NAME.outputs.SECRET_NAME }}` |
-| environment variables | use `${{ env.SECRET_NAME }}` |
-
-##### Parsed Outputs
-
-If you enabled `generate-separate-output: true`, you'll get each of the values in their own output/env variable automatically. For example, if your dynamic secret is `{ "id": "", "username": "", "password": "" }`
-the outputs will be:
-
-| Name | Value |
-|------|-------|
-| job outputs | `${{ steps.job-name.outputs.id }}` |
-|  | `${{ steps.job-name.outputs.username }}` |
-|  | `${{ steps.job-name.outputs.password }}` |
-| environment variables | `${{ env.id }}` |
-|  | `${{ env.username }}` |
-|  | `${{ env.password }}` |
-
-See the parsed dynamic or rotated secrets examples below for a more detailed explanation.
-
 
 ## Examples
 
-### Live Demos
-
 Although this repository's workflows use placeholder values, it is still a real Akeyless account and real providers. The approaches demonstrated are still valid as-is for real implementations. Use these to your advantage!
-
-- **Static Secrets**
-    - [Static secret (standard)](https://github.com/LanceMcCarthy/akeyless-action/blob/eef49f96c7ead7c3a4ae596a5e7fa32099778bd6/.github/workflows/ci.yml#L8-L31)
-- **Dynamic Secrets (AWS provider)**
-    - [AWS dynamic secrets (default)](https://github.com/LanceMcCarthy/akeyless-action/blob/eef49f96c7ead7c3a4ae596a5e7fa32099778bd6/.github/workflows/ci.yml#L33-L88)
-    - [AWS dynamic secrets (auto-parsed)](https://github.com/LanceMcCarthy/akeyless-action/blob/eef49f96c7ead7c3a4ae596a5e7fa32099778bd6/.github/workflows/ci.yml#L90-L128)
-    - [AWS dynamic secrets (auto-parsed w/prefix)](https://github.com/LanceMcCarthy/akeyless-action/blob/eef49f96c7ead7c3a4ae596a5e7fa32099778bd6/.github/workflows/ci.yml#L130-L168)
-- **Dynamic Secrets (Database provider)**
-    - [SQL dynamic secrets (default)](https://github.com/LanceMcCarthy/akeyless-action/blob/eef49f96c7ead7c3a4ae596a5e7fa32099778bd6/.github/workflows/ci.yml#L170-L222)
-    - [SQL dynamic secrets (auto-parsed)](https://github.com/LanceMcCarthy/akeyless-action/blob/eef49f96c7ead7c3a4ae596a5e7fa32099778bd6/.github/workflows/ci.yml#L224-L262)
-    - [SQL dynamic secrets (auto-parsed w/prefix)](https://github.com/LanceMcCarthy/akeyless-action/blob/eef49f96c7ead7c3a4ae596a5e7fa32099778bd6/.github/workflows/ci.yml#L264-L296)
 
 ### Static Secrets Demo
 
@@ -167,39 +110,37 @@ Static secrets are the easiest to use. Just define the secret's path and the sec
 jobs:
   fetch_secrets:
     runs-on: ubuntu-latest
-    permissions:  # IMPORTANT - both of these are required
+    permissions:
       id-token: write
       contents: read
-    name: Fetch some static secrets
+
     steps:
-    - name: Fetch secrets from Akeyless
-      id: fetch-secrets
-      uses: akeyless-github-action
-      with:
-        access-type: jwt
-        access-id: auth-method-access-id     # (ex: 'p-iwt13fd19ajd') We recommend storing this as a GitHub Actions secret
-        static-secrets: '{"/path/to/static/secret":"my_first_secret","/path/to/another/secret":"my_second_secret"}'
-        
-    - name: Use Outputs
-      run: |
-        echo "Step Outputs"
-        echo "my_first_secret: ${{ steps.fetch-secrets.outputs.my_first_secret }}"
-        echo "my_second_secret: ${{ steps.fetch-secrets.outputs.my_second_secret }}"
-        echo "my_dynamic_secret: ${{ steps.fetch-secrets.outputs.my_dynamic_secret }}"
-        
-        echo "Environment Variables"
-        echo "my_first_secret: ${{ env.my_first_secret }}"
-        echo "my_second_secret: ${{ env.my_second_secret }}"
-        echo "my_dynamic_secret: ${{ env.my_dynamic_secret }}"
+      - name: Fetch static secrets from Akeyless
+        uses: akeyless-github-action
+        id: fetch-secrets
+        with:
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
+          access-type: jwt
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
+            - name: "/akeyless-github-action/github-static-secret"
+              output-name: "my_second_secret"
+      - name: Use Akeyless secret
+        run: |
+            echo "Step Outputs"
+            echo "my_first_secret: ${{ steps.fetch-secrets.outputs.my_first_secret }}" >> secrets.txt
+            echo "my_second_secret: ${{ steps.fetch-secrets.outputs.my_second_secret }}" >> secrets.txt
+            
+            echo "Environment Variables"
+            echo "my_first_secret: ${{ env.my_first_secret }}" >> secrets.txt
+            echo "my_second_secret: ${{ env.my_second_secret }}" >> secrets.txt
 ```
 
 ### Dynamic Secrets Demo
 
-The key difference with dynamic secrets is the output value is typically a JSON object. there are two ways you can handle this; *default* output or *parsed* outputs
-
-#### Default Output
-
-If you want those secrets as separate environment variables, there's one extra step to take. See the `KEY TAKEAWAY` section in the following example.
+This example demonstrates fetching an AWS Dynamic Secret from Akeyless.
 
 ```yaml
   fetch_aws_dynamic_secrets:
@@ -215,12 +156,14 @@ If you want those secrets as separate environment variables, there's one extra s
       id: fetch-dynamic-secrets
       uses: akeyless-github-action
       with:
-        access-id: ${{ secrets.AKEYLESS_ACCESS_ID }} # Looks like p-fq3afjjxv839
-        dynamic-secrets: '{"/path/to/dynamic/aws/secret":"aws_dynamic_secrets"}'
+        access-id: ${{vars.AKEYLESS_ACCESS_ID}}
+        dynamic-secrets: |
+          - name: "/path/to/dynamic/aws/secret"
+            output-name: "aws_dynamic_secrets"
         access-type: jwt
         
 # ********* KEY TAKEAWAY  ********* #
-# STEP 1 - EXPORT DYNAMIC SECRET's KEYS TO ENV VARS
+# STEP 1 - Export Dynamic Secret's keys to env vars
     - name: Export Secrets to Environment
       run: |
         echo '${{ steps.fetch-dynamic-secrets.outputs.aws_dynamic_secrets }}' | jq -r 'to_entries|map("AWS_\(.key|ascii_upcase)=\(.value|tostring)")|.[]' >> $GITHUB_ENV
@@ -228,80 +171,17 @@ If you want those secrets as separate environment variables, there's one extra s
 # STEP 2 - You can now access each secret separately as environment variables
     - name: Verify Vars
       run: |
-        echo "access_key_id: ${{ env.AWS_ACCESS_KEY_ID }}"
-        echo "id: ${{ env.AWS_ID }}"
-        echo "secret_access_key: ${{ env.AWS_SECRET_ACCESS_KEY }}"
-        echo "security_token: ${{ env.AWS_SECURITY_TOKEN }}"
-        echo "ttl_in_minutes: ${{ env.AWS_TTL_IN_MINUTES }}"
-        echo "type: ${{ env.AWS_TYPE }}"
-        echo "user: ${{ env.AWS_USER }}"
-```
-
-#### Parsed Output
-
-If you set `generate-separate-output: true`, the job will automatically create a separate output for every key in the dynamic secret. This is extremely useful if you do not want to manually parse it, or if you need to immediately use an output's value in a subsequent step.
-
-For example, a SQL server dynamic secret will provide **id**, **user**, **ttl_in_minutes** and **password** values.
-
-```yaml
-- name: Fetch dynamic secrets from Akeyless (NO PREFIX)
-  id: get-secrets
-  uses: akeyless-action
-  with:
-    access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
-    access-type: jwt
-    dynamic-secrets: '{"/DevTools/my-sqlsrv-secret":""}' # no prefix, use an empty string for output var
-    generate-separate-output: true
-```
-
-Then the outputs/vars will be directly generated for each key: `id`, `user`, `ttl_in_minutes`, and `password` values.
-
-Step Outputs:
-```bash
-echo ${{ steps.get-secrets.outputs.id }}
-echo ${{ steps.get-secrets.outputs.user }}
-echo ${{ steps.get-secrets.outputs.ttl_in_minutes }}
-echo ${{ steps.get-secrets.outputs.password }}
-```
-
-Environment Variables:
-
-```bash
-echo ${{ env.id }}
-echo ${{ env.user }}
-echo ${{ env.ttl_in_minutes }}
-echo ${{ env.password }}
-```
-##### Using a Prefix
-
-Sometimes you might want to prefix the variable name. This is easily done by setting an output name whose value will be used to prefix all the output keys.
-
-For example, using "SQL" for the output path:
-
-```yaml
-- name: Fetch dynamic secrets from Akeyless ('SQL' prefix)
-  uses: akeyless-github-action
-  id: job-name
-  with:
-    access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
-    dynamic-secrets: '{"/DevTools/my-sqlsrv-secret":"SQL"}' # uses 'SQL' for prefix
-    generate-separate-output: true
-```
-The action will prefix `SQL_` prefix to all the automatically parsed outputs:
-
-```bash
-# notice the extra "SQL_" prefix
-echo ${{ env.SQL_user }}
-echo ${{ steps.job-name.outputs.SQL_user }}
+        echo "access_key_id: ${{ env.AWS_ACCESS_KEY_ID }}" >> secrets.txt
+        echo "id: ${{ env.AWS_ID }}" >> secrets.txt
+        echo "secret_access_key: ${{ env.AWS_SECRET_ACCESS_KEY }}" >> secrets.txt
+        echo "security_token: ${{ env.AWS_SECURITY_TOKEN }}" >> secrets.txt
+        echo "ttl_in_minutes: ${{ env.AWS_TTL_IN_MINUTES }}" >> secrets.txt
+        echo "type: ${{ env.AWS_TYPE }}" >> secrets.txt
+        echo "user: ${{ env.AWS_USER }}" >> secrets.txt
 ```
 
 ### Rotated Secrets Demo
-
-The key difference with Rotated secrets is the output value is typically a JSON object. There are two ways you can handle this: *default* output or *parsed* output.
-
-#### Default Output
-
-If you want those secrets as separate environment variables, there's one extra step to take. See the `KEY TAKEAWAY` section in the following example.
+This example demonstrates fetching an AWS Rotated Secret from Akeyless.
 
 ```yaml
   fetch_aws_rotated_secrets:
@@ -317,67 +197,17 @@ If you want those secrets as separate environment variables, there's one extra s
       id: fetch-rotated-secrets
       uses: akeyless-github-action
       with:
-        access-id: ${{ secrets.AKEYLESS_ACCESS_ID }} # Looks like p-fq3afjjxv839
-        dynamic-secrets: '{"/path/to/rotated/aws/secret":"aws_rotated_secrets"}'
+        access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
         access-type: jwt
-        
-# ********* KEY TAKEAWAY  ********* #
-# STEP 1 - EXPORT ROTATED SECRET's KEYS TO ENV VARS
-    - name: Export Secrets to Environment
-      run: |
-        echo '${{ steps.fetch-rotated-secrets.outputs.aws_rotated_secrets }}' | jq -r 'to_entries|map("AWS_\(.key|ascii_upcase)=\(.value|tostring)")|.[]' >> $GITHUB_ENV
-
-# STEP 2 - You can now access each secret separately as environment variables
-    - name: Verify Vars
-      run: |
-        echo "access_key_id: ${{ env.AWS_ACCESS_KEY_ID }}"
-        echo "id: ${{ env.AWS_ID }}"
-        echo "secret_access_key: ${{ env.AWS_SECRET_ACCESS_KEY }}"
-        echo "security_token: ${{ env.AWS_SECURITY_TOKEN }}"
-        echo "ttl_in_minutes: ${{ env.AWS_TTL_IN_MINUTES }}"
-        echo "type: ${{ env.AWS_TYPE }}"
-        echo "user: ${{ env.AWS_USER }}"
-```
-
-#### Parsed Output
-
-If you set `generate-separate-output: true`, the job will automatically create a separate output for every key in the dynamic/rotated secret. This is extremely useful if you do not want to manually parse it, or if you need to immediately use an output's value in a subsequent step.
-
-For example, a SQL server dynamic secret will provide **id**, **user**, **ttl_in_minutes** and **password** values.
-
-```yaml
-- name: Fetch dynamic secrets from Akeyless (NO PREFIX)
-  id: get-secrets
-  uses: akeyless-action
-  with:
-    access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
-    dynamic-secrets: '{"/DevTools/my-sqlsrv-secret":""}' # no prefix, use an empty string for output var
-    generate-separate-output: true
-```
-
-Then the outputs/vars will be directly generated for each key: `id`, `user`, `ttl_in_minutes`, and `password` values.
-
-Step Outputs:
-```bash
-echo ${{ steps.get-secrets.outputs.id }}
-echo ${{ steps.get-secrets.outputs.user }}
-echo ${{ steps.get-secrets.outputs.ttl_in_minutes }}
-echo ${{ steps.get-secrets.outputs.password }}
-```
-
-Environment Variables:
-
-```bash
-echo ${{ env.id }}
-echo ${{ env.user }}
-echo ${{ env.ttl_in_minutes }}
-echo ${{ env.password }}
+      rotated-secrets: |
+        - name: "/path/to/rotated/aws/secret"
+          output-name: "aws_rotated_secrets"
 ```
 
 
 ### SSH Certificates Demo
 ```yaml
-  fetch_aws_dynamic_secrets:
+  fetch_ssh_secrets:
     runs-on: ubuntu-latest
     name: Fetch ssh certificate
 
@@ -386,26 +216,26 @@ echo ${{ env.password }}
       contents: read
 
     steps:
-      - name: Fetch rotated secrets from Akeyless
+      - name: Fetch ssh certificates from Akeyless
         id: fetch-ssh-certificate
         uses: akeyless-github-action
         with:
           access-type: jwt
           ssh-certificate-secrets: |
-              [
-                  {
-                    "cert-issuer-name": "ssh_certificate",
-                    "cert-username": "ubuntu",
-                    "public-key-data": "public_key_data",
-                    "output-name": "my_first_secret"
-                  }
-              ]
+            - name: "/path/to/ssh/secret1"
+              output-name: "ssh_secret"
+              cert-username: "ubuntu",
+              public-key-data: "public_key_data",
+            - name: "/path/to/ssh/secret2"
+              output-name: "ssh_secret2"
+              cert-username: "ubuntu",
+              public-key-data: "public_key_data",
 ```
 
 ### PKI Certificates Demo
 
 ```yaml
-  fetch_aws_dynamic_secrets:
+  fetch_pki_secrets:
     runs-on: ubuntu-latest
     name: Fetch pki certificate
 
@@ -420,98 +250,145 @@ echo ${{ env.password }}
         with:
           access-type: jwt
           pki-certificate-secrets: |
-            [
-                {
-                  "cert-issuer-name": "pki_certificate",
-                  "csr-data-base64": "csr_data_base64",
-                  "output-name": "my_first_secret"
-                }
-            ]
+            - name: "/path/to/pki/secret1"
+              output-name: "pki_secret"
+              csr-data-base64: "csr_data_base64"
+            - name: "/path/to/pki/secret2"
+              output-name: "pki_secret2"
+              csr-data-base64: "csr_data_base64"
 ```
 
 ## Akeyless Setup
 
 ### Authentication Methods
 
-This action supports the following authentication methods (pay attention, for some authentication method there are extra input needed beside the access type):
+This action supports the following authentication methods. Pay close attention as for some authentication methods there are extra inputs needed aside from the `access-type`.
 
 ### JWT Auth Method
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: jwt
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          static-secrets: |
+           - name: "/akeyless-github-action/github-static-secret-json"
+             output-name: "my_first_secret"
+             key: "imp"
 ```
+
+The default usage relies on using the GitHub JWT to login to Akeyless. To make this available, you have to configure it in your job workflow:
+
+```
+jobs:
+  my_job:
+    #---------Required---------#
+    permissions: 
+      id-token: write
+      contents: read
+    #--------------------------#
+```
+> ⚠️ If this is not present, the akeyless-action step will fail with the following error: `Failed to login to Akeyless: Error: Failed to fetch Github JWT: Error message: Unable to get ACTIONS\_ID\_TOKEN\_REQUEST\_URL env variable`.
+
+
 ### AWS IAM Auth Method
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: aws_iam
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          static-secrets: |
+             - name: "/akeyless-github-action/github-static-secret-json"
+               output-name: "my_first_secret"
+               key: "imp"
 ```
 
-### AZURE AD Auth Method
+### Azure AD Auth Method
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: azure_ad
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
 ```
 
 ### GCP Auth Method
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: gcp
           gcp-audience: "gcp-audience"
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
 ```
 
-### K8S Auth Method
+### K8s Auth Method
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: k8s
           k8s-auth-config-name: "k8s-auth-config-name"
-          k8s-service-account-token: "k8s-service-account-token"
-          uid_token: "k8s-service-account-token"
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          gateway-url: "gateway-url"
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
 ```
 
 ### Universal Identity Auth Method
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: universal_identity
           uid_token: "uid_token"
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp" 
 ```
 
 ### Access Key Auth Method
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-key: ${{ secrets.AKEYLESS_ACCESS_KEY }}
           access-type: access_key
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
+```
+
+### Akeyless Token
+```yaml
+        with:
+          token: ${{ steps.JOB_NAME.outputs.token }}
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
 ```
 
 ### TLS Certificate
-When configured TLS on Akeyless Gateway you need to pass also the CA certificate (the CA certificate should be in PEM format):
+When TLS is configured on the Akeyless Gateway, you need to also pass the CA certificate (the CA certificate should be in PEM format):
 ```yaml
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: universal_identity
           uid_token: "uid_token"
           ca-certificate: ${{ secrets.AKEYLESS_CA_CERTIFICATE }}
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}' 
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
 ```
 
 ### Setting up JWT Auth from the Akeyless Console
 
 To configure Akeyless and grant your repositories the necessary permissions to execute this action:
 
-1. Create a GitHub JWT Auth method in Akeyless if you don't have one (you can safely share the auth method between repositories):
+1. Create a GitHub JWT Auth method in Akeyless if you don't already have one (you can safely share the auth method between repositories):
     1. In Akeyless go to "Auth Methods" -> "+ New" -> "OAuth 2.0/JWT".
     2. Specify a name (e.g. "GitHub JWT Auth") and location of your choice.
     3. For the JWKS Url, specify `https://token.actions.githubusercontent.com/.well-known/jwks`
@@ -521,7 +398,7 @@ To configure Akeyless and grant your repositories the necessary permissions to e
     1. In Akeyless go to "Access Roles" -> "+ New"
     2. Give it a name and location, and create it.
     3. Find your new access role and click on it to edit it.
-    4. On the right side, under "Secrets & Keys", click the "Add" button to configure read access to any static or dynamic secrets you will fetch from your pipeline.
+    4. On the right side, under "Secrets & Keys", click the "Add" button to configure `read` access to any static or dynamic secrets you will fetch from your pipeline.
 3. Attach your GitHub JWT Auth method to your role:
     1. Once again, find the access role you created in step #2 above and click on it to edit it.
     2. Hit the "+ Associate" button to associate your "GitHub JWT Auth" method with the role.

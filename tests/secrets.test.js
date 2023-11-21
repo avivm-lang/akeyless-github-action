@@ -10,22 +10,22 @@ describe('testing secret exports', () => {
   beforeEach(() => {
     const args = {
       akeylessToken: "akeylessToken",
-      staticSecrets: {"/some/static/secret":"my_first_secret", "/some2/static2/secret2":"my_second_secret"},
+      staticSecrets: [{"name": "/some/static/secret", "output-name": "my_first_secret"}, {"name": "/some2/static2/secret2", "output-name":"my_second_secret"}],
       dynamicSecrets: {"/some/dynamic/secret":"my_first_secret"},
       rotatedSecrets: {"/some/rotated/secret":"my_first_secret"},
       apiUrl: 'https://api.akeyless.io',
       exportSecretsToOutputs: true,
       exportSecretsToEnvironment: true,
       parseDynamicSecrets: false,
-      sshCertificate: [{ "cert-issuer-name": "sshCert", "cert-username": "ubuntu", "public-key-data": "ssh-rsa AAAAB", "output-name": "my_first_secret"}],
-      pkiCertificate: [{ "cert-issuer-name": "pkiCert", "csr-data-base64": "LS0tL", "output-name": "my_first_secret"}]
+      sshCertificate: [{ "name": "sshCert", "cert-username": "ubuntu", "public-key-data": "ssh-rsa AAAAB", "output-name": "my_first_secret"}],
+      pkiCertificate: [{ "name": "pkiCert", "csr-data-base64": "LS0tL", "output-name": "my_first_secret"}]
     }
   })
 
   it('should export static secret', async function () {
     const args = {
       akeylessToken: "akeylessToken",
-      staticSecrets: {"/some/static/secret":"my_first_secret", "/some2/static2/secret2":"my_second_secret"},
+      staticSecrets: [{"name": "/some/static/secret", "output-name": "my_first_secret"}, {"name": "/some2/static2/secret2", "output-name":"my_second_secret", "key": "bla"}],
       dynamicSecrets: undefined,
       rotatedSecrets: undefined,
       apiUrl: 'https://api.akeyless.io',
@@ -43,7 +43,7 @@ describe('testing secret exports', () => {
       "/some/static/secret": 'secret-value-1',
     });
     api.getSecretValue.mockResolvedValueOnce({
-      "/some2/static2/secret2": 'secret-value-2',
+      "/some2/static2/secret2": '{"bla":"secret-value-2", "no":"nope"}',
     });
     core.setSecret = jest.fn();
     core.setOutput = jest.fn();
@@ -65,7 +65,7 @@ describe('testing secret exports', () => {
     });
 
     // Check if core functions are called with the correct values
-    expect(core.setSecret).toHaveBeenCalledTimes(2);
+    expect(core.setSecret).toHaveBeenCalledTimes(3);
     expect(core.setOutput).toHaveBeenCalledWith('my_first_secret', 'secret-value-1');
     expect(core.setOutput).toHaveBeenCalledWith("my_second_secret", 'secret-value-2');
     expect(core.exportVariable).toHaveBeenCalledWith('my_first_secret', 'secret-value-1');
@@ -76,7 +76,7 @@ describe('testing secret exports', () => {
     const args = {
       akeylessToken: "akeylessToken",
       staticSecrets: undefined,
-      dynamicSecrets: {"/some/dynamic/secret":"my_first_secret", "/some2/dynamic2/secret2":"my_second_secret"},
+      dynamicSecrets: [{"name":"/some/dynamic/secret","output-name":"my_first_secret"}, {"name":"/some2/dynamic2/secret2","output-name":"my_second_secret"}],
       rotatedSecrets: undefined,
       apiUrl: 'https://api.akeyless.io',
       exportSecretsToOutputs: true,
@@ -115,7 +115,7 @@ describe('testing secret exports', () => {
     });
 
     // Check if core functions are called with the correct values
-    expect(core.setSecret).toHaveBeenCalledTimes(2);
+    expect(core.setSecret).toHaveBeenCalledTimes(3);
     expect(core.setOutput).toHaveBeenCalledWith('my_first_secret', {"/some/dynamic/secret": 'secret-value-1'});
     expect(core.setOutput).toHaveBeenCalledWith("my_second_secret", {"/some2/dynamic2/secret2": 'secret-value-2'});
     expect(core.exportVariable).toHaveBeenCalledWith('my_first_secret', {"/some/dynamic/secret": 'secret-value-1'});
@@ -127,7 +127,7 @@ describe('testing secret exports', () => {
       akeylessToken: "akeylessToken",
       staticSecrets: undefined,
       dynamicSecrets: undefined,
-      rotatedSecrets: {"/some/rotated/secret":"my_first_secret", "/some2/rotated2/secret2":"my_second_secret"},
+      rotatedSecrets: [{"name":"/some/rotated/secret","output-name":"my_first_secret"}, {"name":"/some2/rotated2/secret2","output-name":"my_second_secret"}],
       apiUrl: 'https://api.akeyless.io',
       exportSecretsToOutputs: true,
       exportSecretsToEnvironment: true,
@@ -165,7 +165,7 @@ describe('testing secret exports', () => {
     });
 
     // Check if core functions are called with the correct values
-    expect(core.setSecret).toHaveBeenCalledTimes(2);
+    expect(core.setSecret).toHaveBeenCalledTimes(3);
     expect(core.setOutput).toHaveBeenCalledWith('my_first_secret', {"/some/rotated/secret": 'secret-value-1'});
     expect(core.setOutput).toHaveBeenCalledWith("my_second_secret", {"/some2/rotated2/secret2": 'secret-value-2'});
     expect(core.exportVariable).toHaveBeenCalledWith('my_first_secret', {"/some/rotated/secret": 'secret-value-1'});
@@ -184,13 +184,13 @@ describe('testing secret exports', () => {
       parseDynamicSecrets: false,
       sshCertificate:[
         {
-          "cert-issuer-name": "sshCert",
+          "name": "sshCert",
           "cert-username": "ubuntu",
           "public-key-data": "publicKey",
           "output-name": "my_first_secret"
         },
         {
-          "cert-issuer-name": "sshCert2",
+          "name": "sshCert2",
           "cert-username": "ubuntu2",
           "public-key-data": "publicKey2",
           "output-name": "my_second_secret"
@@ -228,7 +228,7 @@ describe('testing secret exports', () => {
     });
 
     // Check if core functions are called with the correct values
-    expect(core.setSecret).toHaveBeenCalledTimes(2);
+    expect(core.setSecret).toHaveBeenCalledTimes(3);
     expect(core.setOutput).toHaveBeenCalledWith('my_first_secret', "first ssh certificate");
     expect(core.setOutput).toHaveBeenCalledWith("my_second_secret", "second ssh certificate");
     expect(core.exportVariable).toHaveBeenCalledWith('my_first_secret', "first ssh certificate");
@@ -248,12 +248,12 @@ describe('testing secret exports', () => {
       sshCertificate: undefined,
       pkiCertificate: [
       {
-        "cert-issuer-name": "pkiCert",
+        "name": "pkiCert",
         "csr-data-base64": "csr data",
         "output-name": "my_first_secret"
       },
       {
-        "cert-issuer-name": "pkiCert2",
+        "name": "pkiCert2",
         "csr-data-base64": "csr data2",
         "output-name": "my_second_secret"
       }
@@ -287,7 +287,7 @@ describe('testing secret exports', () => {
     });
 
     // Check if core functions are called with the correct values
-    expect(core.setSecret).toHaveBeenCalledTimes(2);
+    expect(core.setSecret).toHaveBeenCalledTimes(3);
     expect(core.setOutput).toHaveBeenCalledWith('my_first_secret', "first pki certificate");
     expect(core.setOutput).toHaveBeenCalledWith("my_second_secret", "second pki certificate");
     expect(core.exportVariable).toHaveBeenCalledWith('my_first_secret', "first pki certificate");

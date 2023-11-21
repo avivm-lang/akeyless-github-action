@@ -1,166 +1,73 @@
 const core = require('@actions/core');
 const auth = require('./auth');
-
-const stringInputs = {
-    accessId: 'access-id',
-    accessType: 'access-type',
-    apiUrl: 'api-url'
-};
-
-const boolInputs = {
-    exportSecretsToOutputs: 'export-secrets-to-outputs',
-    exportSecretsToEnvironment: 'export-secrets-to-environment',
-    generateSeparateOutput: 'generate-separate-output'
-};
-
-const dictInputs = {
-    staticSecrets: 'static-secrets',
-    dynamicSecrets: 'dynamic-secrets',
-    rotatedSecrets: 'rotated-secrets',
-};
-
-const arrJsonInput = {
-    sshCertificate: 'ssh-certificates',
-    pkiCertificate: 'pki-certificates',
-}
-
-const certificateRequiredFields = {
-    'ssh-certificates': ["cert-issuer-name", "cert-username", "public-key-data"],
-    'pki-certificates': ["cert-issuer-name", "csr-data-base64"]
-}
+const yaml = require('js-yaml');
 
 const fetchAndValidateInput = () => {
     let params = {
-        accessId: core.getInput('access-id', {required: true}),
+        accessId: core.getInput('access-id'),
         accessType: core.getInput('access-type'),
         apiUrl: core.getInput('api-url'),
-        staticSecrets: core.getInput('static-secrets'),
-        dynamicSecrets: core.getInput('dynamic-secrets'),
-        rotatedSecrets: core.getInput('rotated-secrets'),
-        sshCertificate: core.getInput('ssh-certificates'),
-        pkiCertificate: core.getInput('pki-certificates'),
+        staticSecrets: parseAndValidateSecrets('static-secrets', ['name', 'output-name'], ['key']),
+        dynamicSecrets: parseAndValidateSecrets('dynamic-secrets', ['name', 'output-name'], ['key']),
+        rotatedSecrets: parseAndValidateSecrets('rotated-secrets', ['name', 'output-name'], ['key']),
+        sshCertificate: parseAndValidateSecrets('ssh-certificates', ['name', 'cert-username', 'public-key-data', 'output-name'], ['key']),
+        pkiCertificate: parseAndValidateSecrets('pki-certificates', ['name', 'csr-data-base64', 'output-name'], ['key']),
+        token: core.getInput('token'),
         exportSecretsToOutputs: core.getBooleanInput('export-secrets-to-outputs', {default: true}),
-        exportSecretsToEnvironment: core.getBooleanInput('export-secrets-to-environment', {default: true}),
-        generateSeparateOutput: core.getBooleanInput('generate-separate-output', {default: false})
+        exportSecretsToEnvironment: core.getBooleanInput('export-secrets-to-environment', {default: true})
     };
-    // our only required parameter
-    if (!params['accessId']) {
-        throw new Error('You must provide the access id for your auth method via the access-id input');
+    if (params['token'] == "") {
+        validateRequiredParamsWhenTokenNotExist(params['accessId'], params['accessType'])
     }
-
-    validateStringTypes(params)
-
-    params.accessId = params.accessId.trim()
-
-    validateBoolTypes(params)
-
-    validateDictionaryTyps(params)
-
-    validateJsonArrayTypes(params)
-
-    // check access types
-    if (!auth.allowedAccessTypes.includes(params['accessType'].toLowerCase())) {
-        throw new Error(`access-type must be one of: ['${auth.allowedAccessTypes.join("', '")}']`);
-    }
-    params['accessType'] = params['accessType'].toLowerCase();
-
     return params;
 };
 
-function validateJsonArrayTypes(params) {
-    // check for array json types (certificates)
-    for (const [paramKey, inputId] of Object.entries(arrJsonInput)) {
-        if (!params[paramKey]) {
-            continue;
-        }
-        if (typeof params[paramKey] !== 'string') {
-            throw new Error(`Input ${inputId} should be a serialized JSON with array of certificates params`);
-        }
-        try {
-            let parsed = JSON.parse(params[paramKey]);
-            validateCertificateInputJson(parsed, inputId)
-            params[paramKey] = parsed
-        } catch (e) {
-            if (e instanceof SyntaxError) {
-                throw new Error(`Input ${inputId} did not contain valid JSON`);
-            } else {
-                throw e;
+function validateRequiredParamsWhenTokenNotExist(accessId, accessType) {
+    if (!accessId) {
+        throw new Error('You must provide the access id for your auth method via the access-id input');
+    }
+    if (accessType == "") {
+        throw new Error(`you must provide access-type`);
+    }
+    if (!auth.allowedAccessTypes.includes(accessType.toLowerCase())) {
+        throw new Error(`access-type must be one of: ['${auth.allowedAccessTypes.join("', '")}']`);
+    }
+}
+
+function parseAndValidateSecrets(inputId, requiredFields, optionalFields) {
+    const inputString = core.getInput(inputId);
+    if (!inputString) return null;
+
+    try {
+        const parsed = yaml.load(inputString);
+        validateSecrets(parsed, inputId, requiredFields, optionalFields);
+        return parsed;
+    } catch (e) {
+        throw new Error(`Input ${inputId} did not contain valid YAML: ${e.message}`);
+    }
+}
+
+function validateSecrets(secrets, inputId, requiredFields, optionalFields) {
+    if (!Array.isArray(secrets)) {
+        throw new Error(`Input ${inputId} must be an array of objects.`);
+    }
+
+    secrets.forEach(secret => {
+        const keys = Object.keys(secret);
+        requiredFields.forEach(field => {
+            if (!keys.includes(field)) {
+                throw new Error(`Each item in ${inputId} must have the required field '${field}'.`);
             }
-        }
-    }
-}
+        });
 
-function validateDictionaryTyps(params) {
-    // check for dict types
-    for (const [paramKey, inputId] of Object.entries(dictInputs)) {
-        if (typeof params[paramKey] !== 'string') {
-            throw new Error(`Input ${inputId} should be a serialized JSON dictionary with the secret path as a key and the output name as the value`);
-        }
-        if (!params[paramKey]) {
-            continue;
-        }
-        try {
-            let parsed = JSON.parse(params[paramKey]);
-            if (parsed.constructor !== Object) {
-                throw new Error(`Input ${inputId} did not contain a valid JSON dictionary`);
+        keys.forEach(key => {
+            if (![...requiredFields, ...optionalFields].includes(key)) {
+                throw new Error(`Unexpected field '${key}' in ${inputId}.`);
             }
-            params[paramKey] = parsed;
-        } catch (e) {
-            if (e instanceof SyntaxError) {
-                throw new Error(`Input ${inputId} did not contain valid JSON`);
-            } else {
-                throw e;
-            }
-        }
-    }
+        });
+    });
 }
-
-function validateStringTypes(params) {
-    // check for string types
-    for (const [paramKey, inputId] of Object.entries(stringInputs)) {
-        if (typeof params[paramKey] !== 'string') {
-            throw new Error(`Input ${inputId} should be a string`);
-        }
-    }
-}
-
-function validateBoolTypes(params) {
-// check for bool types
-    for (const [paramKey, inputId] of Object.entries(boolInputs)) {
-        if (typeof params[paramKey] !== 'boolean') {
-            throw new Error(`Input ${inputId} should be a boolean`);
-        }
-    }
-}
-
-function validateCertificateInputJson(params, certificateType) {
-    // Ensure that input is an array
-    if (!Array.isArray(params)) {
-        throw new Error(`Input ${certificateType} must be an array of certificate objects.`);
-    }
-    // Ensure each param is object
-    for (const paramKey in params) {
-        if (params[paramKey].constructor !== Object) {
-            throw new Error(`Input ${certificateType} did not contain a valid JSON with array of objects`);
-        }
-        validateCertificateRequiredFields(params[paramKey], certificateRequiredFields[certificateType])
-    }
-}
-
-function validateCertificateRequiredFields(params, requiredFields) {
-    // Loop through each certificate object in the array
-    for (const field of requiredFields) {
-        if (!(field in params)) {
-            throw new Error(`Input ${certificateType} did not contain a valid JSON with array of objects with the required field ${field}`);
-        }
-    }
-}
-
 
 module.exports = {
-    fetchAndValidateInput,
-    dictInputs,
-    arrJsonInput,
-    stringInputs,
-    boolInputs
-}
+    fetchAndValidateInput
+};

@@ -21,21 +21,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Akeyless Authentication and fetch secret Step
+      - name: Akeyless Authentication and fetch secret
         uses: ./
         id: fetch-secrets
         with:
-          access-id: ${{ secrets.AKEYLESS_ACCESS_ID }}
+          access-id: ${{ vars.AKEYLESS_ACCESS_ID }}
           access-type: jwt
-          static-secrets: '{"/akeyless-github-action/github-static-secret":"my_first_secret"}'
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret-json"
+              output-name: "my_first_secret"
+              key: "imp"
+
+      - name: Akeyless Authentication with existing token and fetch secret
+        uses: ./
+        id: fetch-secrets-with-token
+        with:
+          token: ${{ steps.fetch-secrets.outputs.token }}
+          static-secrets: |
+            - name: "/akeyless-github-action/github-static-secret"
+              output-name: "my_second_secret"
 
       - name: Use Akeyless secret
         run: |
           secret_value="${{ steps.fetch-secrets.outputs.my_first_secret }}"
-    
-          if [ "$secret_value" == "secret_value" ]; then
-          echo "Secret value is 'secret_value'"
-          else
+          if [ "$secret_value" != "secret_json_key_value" ]; then
+          echo "Secret value is not 'secret_json_key_value'"
+          exit 1  # Terminate the workflow with a non-zero status code
+          fi
+          second_secret_value="${{ steps.fetch-secrets-with-token.outputs.my_second_secret }}"
+          if [ "$second_secret_value" != "secret_value" ]; then
           echo "Secret value is not 'secret_value'"
           exit 1  # Terminate the workflow with a non-zero status code
+          else
+          echo "Secret value is 'secret_value'"
           fi

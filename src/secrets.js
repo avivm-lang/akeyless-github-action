@@ -11,7 +11,6 @@ async function handleExportSecrets(args) {
         apiUrl,
         exportSecretsToOutputs,
         exportSecretsToEnvironment,
-        generateSeparateOutput,
         sshCertificate,
         pkiCertificate
     } = args;
@@ -30,7 +29,7 @@ async function handleExportSecrets(args) {
         if (secrets) {
             core.debug(`${key}: Fetching!`);
             try {
-                await handler(akeylessToken, secrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment, generateSeparateOutput);
+                await handler(akeylessToken, secrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment);
             } catch (error) {
                 core.debug(`Failed to fetch ${key}: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
                 core.setFailed(`Failed to fetch secret`);
@@ -39,15 +38,18 @@ async function handleExportSecrets(args) {
             core.debug(`${key}: Skipping step because no ${key} were specified`);
         }
     }
+    exportSecretToOutput('token', akeylessToken, exportSecretsToOutputs, exportSecretsToEnvironment)
 }
 
 async function exportStaticSecrets(akeylessToken, staticSecrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment) {
     const api = akeylessApi.api(apiUrl);
 
-    for (const [akeylessSecretPath, variableName] of Object.entries(staticSecrets)) {
+    let secretName;
+    for (const staticParams of staticSecrets) {
+        secretName = staticParams['name']
         const param = akeyless.GetSecretValue.constructFromObject({
             token: akeylessToken,
-            names: [akeylessSecretPath]
+            names: [secretName]
         });
 
         const staticSecret = await api.getSecretValue(param).catch(error => {
@@ -59,18 +61,19 @@ async function exportStaticSecrets(akeylessToken, staticSecrets, apiUrl, exportS
             return;
         }
 
-        setOutput(variableName, staticSecret[akeylessSecretPath], exportSecretsToOutputs, exportSecretsToEnvironment)
+        setOutput(staticSecret[secretName], staticParams['key'], staticParams['output-name'], exportSecretsToOutputs, exportSecretsToEnvironment)
     }
 }
 
-async function exportDynamicSecrets(akeylessToken, dynamicSecrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment, generateSeparateOutputs) {
+async function exportDynamicSecrets(akeylessToken, dynamicSecrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment) {
     const api = akeylessApi.api(apiUrl);
     try {
-        for (const [akeylessSecretPath, variableName] of Object.entries(dynamicSecrets)) {
-
+        let secretName;
+        for (const dynamicParams of dynamicSecrets) {
+            secretName = dynamicParams['name']
             const param = akeyless.GetDynamicSecretValue.constructFromObject({
                 token: akeylessToken,
-                name: akeylessSecretPath
+                name: secretName
             });
 
             const dynamicSecret = await api.getDynamicSecretValue(param);
@@ -79,32 +82,38 @@ async function exportDynamicSecrets(akeylessToken, dynamicSecrets, apiUrl, expor
                 return;
             }
 
-            handleOutput(dynamicSecret, variableName, generateSeparateOutputs, exportSecretsToOutputs, exportSecretsToEnvironment)
+            setOutput(dynamicSecret, dynamicParams['key'], dynamicParams['output-name'], exportSecretsToOutputs, exportSecretsToEnvironment)
         }
     } catch (error) {
-        core.debug(`Failed to export dynamic secrets: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
-        core.setFailed('Failed to export dynamic secrets');
+        core.debug(`Failed to export dynamic secret: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
+        core.setFailed('Failed to export dynamic secret');
     }
 }
-async function exportRotatedSecrets(akeylessToken, rotatedSecrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment, generateSeparateOutputs) {
+async function exportRotatedSecrets(akeylessToken, rotatedSecrets, apiUrl, exportSecretsToOutputs, exportSecretsToEnvironment) {
     const api = akeylessApi.api(apiUrl);
 
-    for (const [akeylessSecretPath, variableName] of Object.entries(rotatedSecrets)) {
+    let secretName;
+    try {
+        for (const rotateParams of rotatedSecrets) {
+            secretName = rotateParams['name']
+            const param = akeyless.GetRotatedSecretValue.constructFromObject({
+                token: akeylessToken,
+                names: [secretName]
+            });
 
-        const param = akeyless.GetRotatedSecretValue.constructFromObject({
-            token: akeylessToken,
-            names: [akeylessSecretPath]
-        });
+            let rotatedSecret = await api.getRotatedSecretValue(param).catch(error => {
+                core.debug(`getRotatedSecret Failed: ${JSON.stringify(error)}`);
+                core.setFailed(`get rotated secret failed`);
+            });
 
-        let rotatedSecret = await api.getRotatedSecretValue(param).catch(error => {
-            core.debug(`getRotatedSecret Failed: ${JSON.stringify(error)}`);
-            core.setFailed(`get rotated secret failed`);
-        });
-
-        if (!rotatedSecret) {
-            return
+            if (!rotatedSecret) {
+                return
+            }
+            setOutput(rotatedSecret.value, rotateParams['key'], rotateParams['output-name'], exportSecretsToOutputs, exportSecretsToEnvironment)
         }
-        handleOutput(rotatedSecret.value, variableName, generateSeparateOutputs, exportSecretsToOutputs, exportSecretsToEnvironment)
+    } catch (error) {
+        core.debug(`Failed to export rotated secret: ${typeof error === 'object' ? JSON.stringify(error) : error}`);
+        core.setFailed('Failed to export rotated secret');
     }
 }
 
@@ -113,13 +122,13 @@ async function exportSshCertificateSecrets(akeylessToken, sshCertificate, apiUrl
     for (const sshParams of sshCertificate) {
         const param = akeyless.GetSSHCertificate.constructFromObject({
             token: akeylessToken,
-            'cert-issuer-name': sshParams['cert-issuer-name'],
+            'cert-issuer-name': sshParams['name'],
             'cert-username': sshParams['cert-username'],
             'public-key-data': sshParams['public-key-data'],
         })
         const sshCertValue = await api.getSSHCertificate(param)
 
-        setOutput(sshParams['output-name'], sshCertValue, exportSecretsToOutputs, exportSecretsToEnvironment)
+        setOutput(sshCertValue, sshParams['key'], sshParams['output-name'], exportSecretsToOutputs, exportSecretsToEnvironment)
     }
 }
 
@@ -128,39 +137,36 @@ async function exportPkiCertificateSecrets(akeylessToken, pkiCertificate, apiUrl
     for (const pkiParams of pkiCertificate) {
         const param = akeyless.GetPKICertificate.constructFromObject({
             token: akeylessToken,
-            'cert-issuer-name': pkiParams['cert-issuer-name'],
+            'cert-issuer-name': pkiParams['name'],
             'csr-data-base64': pkiParams['csr-data-base64'],
         })
         const pkiCertValue = await api.getPKICertificate(param)
 
-        setOutput(pkiParams['output-name'], pkiCertValue, exportSecretsToOutputs, exportSecretsToOutputs)
+        setOutput(pkiCertValue, pkiParams['key'], pkiParams['output-name'], exportSecretsToOutputs, exportSecretsToEnvironment)
     }
 }
 
-function handleOutput(secret, variableName, generateSeparateOutputs, exportSecretsToOutputs, exportSecretsToEnvironment) {
-    // toggled by parse-dynamic-secrets
-    if (generateSeparateOutputs === false) {
-        // **** Option 1 (DEFAULT BEHAVIOR) ***** //
-        // Exports the entire secret value as one object
-        setOutput(variableName, secret, exportSecretsToOutputs, exportSecretsToEnvironment)
-    } else {
-        // **** Option 2 (parse-secrets =true) ***** //
-        // Generate separate output/env vars for each value in the dynamic secret
+function setOutput(secret, key, outputName, exportSecretsToOutputs, exportSecretsToEnvironment) {
+    const secretValue = processSecretValue(secret, key);
+    exportSecretToOutput(outputName, secretValue, exportSecretsToOutputs, exportSecretsToEnvironment)
+}
 
-        for (const key in secret) {
-            // if the user set an output variable name, use it to prefix the output/env var's name
-            let finalVarName = variableName;
-            if (variableName === null || variableName.trim() === '') {
-                finalVarName = `${key}`;
-            } else {
-                finalVarName = `${variableName}_${key}`;
-            }
-            setOutput(finalVarName, secret[key], exportSecretsToOutputs, exportSecretsToEnvironment)
+function processSecretValue(secret, key) {
+    if (!key) return secret;
+
+    try {
+        const secretObj = JSON.parse(secret);
+        if (key in secretObj) {
+            return secretObj[key];
+        } else {
+            throw new Error(`Key '${key}' not found in secret`);
         }
+    } catch (e) {
+        throw new Error(`Error processing secret value: ${e.message}`);
     }
 }
 
-function setOutput(variableName, secretValue, exportSecretsToOutputs, exportSecretsToEnvironment) {
+function exportSecretToOutput(variableName, secretValue, exportSecretsToOutputs, exportSecretsToEnvironment) {
     // obscure value in visible output and logs
     core.setSecret(secretValue)
     // Switch 1 - set outputs

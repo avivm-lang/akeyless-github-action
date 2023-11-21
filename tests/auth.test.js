@@ -1,4 +1,5 @@
 const akeylessCloud = require("akeyless-cloud-id");
+const mockFs = require('mock-fs');
 jest.mock('@actions/core');
 jest.mock('../src/akeyless_api');
 jest.mock('akeyless-cloud-id');
@@ -24,7 +25,7 @@ describe('Akeyless authentication', () => {
 
     core.getInput = jest.fn(() => accessKeyValue);
 
-    authOutput = auth.akeylessLogin(accessId, accessType, apiUrl)
+    authOutput = await auth.akeylessLogin(accessId, accessType, apiUrl)
 
     checkParams(authOutput, {
       'access-type': accessType,
@@ -39,7 +40,7 @@ describe('Akeyless authentication', () => {
 
     core.getIDToken = jest.fn(() => Promise.resolve(githubJwt));
 
-    authOutput = auth.akeylessLogin(accessId, accessType, apiUrl)
+    authOutput = await auth.akeylessLogin(accessId, accessType, apiUrl)
     checkParams(authOutput, {
       'access-type': accessType,
       'access-id': accessId,
@@ -53,7 +54,7 @@ describe('Akeyless authentication', () => {
 
     akeylessCloud.getCloudId = jest.fn(() => awsCloudId);
 
-    authOutput = auth.akeylessLogin(accessId, accessType, apiUrl)
+    authOutput = await auth.akeylessLogin(accessId, accessType, apiUrl)
 
     checkParams(authOutput, {
       'access-type': accessType,
@@ -69,7 +70,7 @@ describe('Akeyless authentication', () => {
     akeylessCloud.getCloudId = jest.fn(() => azureCloudId);
     api.auth = jest.fn(() => Promise.resolve({token: akeylessToken}));
 
-    authOutput = auth.akeylessLogin(accessId, accessType, apiUrl)
+    authOutput = await auth.akeylessLogin(accessId, accessType, apiUrl)
     checkParams(authOutput, {
       'access-type': accessType,
       'access-id': accessId,
@@ -85,7 +86,7 @@ describe('Akeyless authentication', () => {
     core.getInput = jest.fn(() => gcpAudience);
     akeylessCloud.getCloudId = jest.fn(() => gcpCloudId);
 
-    authOutput = auth.akeylessLogin(accessId, accessType, apiUrl)
+    authOutput = await auth.akeylessLogin(accessId, accessType, apiUrl)
     checkParams(authOutput, {
       'access-type': accessType,
       'access-id': accessId,
@@ -95,38 +96,45 @@ describe('Akeyless authentication', () => {
   })
 
   it('testing kubernetes login', async () => {
-    const accessType = 'k8s'
-    const gatewayUrl = "gateway_url"
-    const k8sAuthConfigName = "k8s_auth_config_name"
-    const k8sServiceAccountToken = "k8s_service_account_token"
-
-    core.getInput = jest.fn((inputName) => {
-      if (inputName == 'gateway-url') {
-        return gatewayUrl
+    // Mock filesystem for k8s JWT
+    mockFs({
+      '/var/run/secrets/kubernetes.io/serviceaccount': {
+        'token': 'k8s-token-content'
       }
-      if (inputName == 'k8s-auth-config-name') {
-        return k8sAuthConfigName
-      }
-      if (inputName == 'k8s-service-account-token') {
-        return k8sServiceAccountToken
-      }
-        throw new Error(`core.getInput called with unexpected inputName: ${inputName}`);
     });
 
-    authOutput = auth.akeylessLogin(accessId, accessType, apiUrl)
-    checkParams(authOutput, {
+    const accessType = 'k8s';
+    const gatewayUrl = "gateway_url";
+    const k8sAuthConfigName = "k8s_auth_config_name";
+    const expectedBase64Token = Buffer.from('k8s-token-content').toString('base64');
+
+    core.getInput = jest.fn((inputName) => {
+      if (inputName === 'gateway-url') {
+        return gatewayUrl;
+      }
+      if (inputName === 'k8s-auth-config-name') {
+        return k8sAuthConfigName;
+      }
+      return null;
+    });
+
+    authOutput = await auth.akeylessLogin(accessId, accessType, apiUrl);
+
+    await checkParams(authOutput, {
       'access-id': accessId,
       'access-type': accessType,
       'k8s-auth-config-name': k8sAuthConfigName,
       'gateway-url': gatewayUrl,
-      'k8s-service-account-token': k8sServiceAccountToken
-    })
-  })
+      'k8s-service-account-token': expectedBase64Token
+    });
+
+    // Restore the filesystem after the test
+    mockFs.restore();
+  });
 
   async function checkParams(token, params) {
-    await expect(token).resolves.toEqual({token: akeylessToken});
+    expect(token).toEqual({token: akeylessToken});
     expect(api.auth).toHaveBeenCalledWith(params);
   }
-
 })
 

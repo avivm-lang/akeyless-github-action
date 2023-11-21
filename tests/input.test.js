@@ -1,151 +1,103 @@
-const {stringInputs, boolInputs, dictInputs, arrJsonInput} = require("../src/input");
+const core = require('@actions/core');
+const input = require('../src/input');
+const yaml = require('js-yaml');
 jest.mock('@actions/core');
 
-core = require('@actions/core');
-input = require('../src/input');
-
-const stringFailCases = Object.values(stringInputs)
-
-const boolFailCases = Object.values(boolInputs)
-
-const secretsFailCases = Object.values(dictInputs)
-
-const certificatesFailCases = Object.values(arrJsonInput)
-
-let inputToOutputMap
-
 describe('testing input', () => {
+    let inputToOutputMap;
+
     beforeEach(() => {
         inputToOutputMap = {
             'access-id': 'p-12345',
             'access-type': 'gcp',
             'api-url': 'https://api.akeyless.io',
-            'static-secrets': '{"/some/static/secret":"my_first_secret"}',
-            'dynamic-secrets': '{"/some/dynamic/secret":"my_first_secret"}',
-            'rotated-secrets': '{"/some/rotated/secret":"my_first_secret"}',
-            'ssh-certificates': '[{ "cert-issuer-name": "sshCert", "cert-username": "ubuntu", "public-key-data": "ssh-rsa AAAAB", "output-name": "my_first_secret"}]',
-            'pki-certificates': '[{ "cert-issuer-name": "pkiCert", "csr-data-base64": "LS0tL", "output-name": "my_first_secret"}]',
+            'static-secrets': '- name: "secret/data/ci/aws"\n  output-name: "fasdf"',
+            'dynamic-secrets': '- name: "secret/data/ci/aws2"\n  output-name: "fasdf"',
+            'rotated-secrets': '- name: "secret/data/ci/aws3"\n  output-name: "fasdf"',
+            'ssh-certificates': '- name: "sshCert"\n  cert-username: "ubuntu"\n  public-key-data: "ssh-rsa AAAAB"\n  output-name: "fasdf"',
+            'pki-certificates': '- name: "pkiCert"\n  csr-data-base64: "LS0tL"\n  output-name: "fasdf"',
+            'token': '',
             'export-secrets-to-outputs': true,
             'export-secrets-to-environment': true,
             'generate-separate-output': false,
         };
-    })
-  it('Input is all good', () => {
-    const expectedOutput = {
-      'accessId': 'p-12345',
-      'accessType': 'gcp',
-      'apiUrl': 'https://api.akeyless.io',
-      'staticSecrets': JSON.parse(inputToOutputMap['static-secrets']),
-      'dynamicSecrets': JSON.parse(inputToOutputMap['dynamic-secrets']),
-      'rotatedSecrets': JSON.parse(inputToOutputMap['rotated-secrets']),
-      'sshCertificate': JSON.parse(inputToOutputMap['ssh-certificates']),
-      'pkiCertificate': JSON.parse(inputToOutputMap['pki-certificates']),
-      'exportSecretsToOutputs': true,
-      'exportSecretsToEnvironment': true,
-      'generateSeparateOutput': false,
-    };
-    core.getInput = jest.fn((inputName) => {
-      return inputToOutputMap[inputName]
-    });
-    core.getBooleanInput = jest.fn((inputName) => {
-      return inputToOutputMap[inputName]
+        mockCoreInput(inputToOutputMap);
     });
 
-    params = input.fetchAndValidateInput();
+    it('should parse and validate all inputs correctly', () => {
+        const params = input.fetchAndValidateInput();
 
-    expect(params).toEqual(expectedOutput)
-  });
+        expect(params).toMatchObject({
+            accessId: 'p-12345',
+            accessType: 'gcp',
+            apiUrl: 'https://api.akeyless.io',
+            staticSecrets: expect.any(Array),
+            dynamicSecrets: expect.any(Array),
+            rotatedSecrets: expect.any(Array),
+            sshCertificate: expect.any(Array),
+            pkiCertificate: expect.any(Array),
+            token: '',
+            exportSecretsToOutputs: true,
+            exportSecretsToEnvironment: true,
+        });
+    });
 
-  it.each(stringFailCases)(
-      "given %p as int argument and should fail",
-      (keyToFail) => {
-        inputToOutputMap[keyToFail] = 123
-        core.getInput = jest.fn((inputName) => {
-          return inputToOutputMap[inputName]
-        })
+    it('should throw an error when token is not provided and required fields are missing', () => {
+        inputToOutputMap['access-id'] = ''
+
+        mockCoreInput(inputToOutputMap);
+
         expect(() => {
-          input.fetchAndValidateInput();
-        }).toThrow(`Input ${keyToFail} should be a string`);
-      }
-  )
+            input.fetchAndValidateInput();
+        }).toThrow('You must provide the access id for your auth method via the access-id input');
 
-  it.each(boolFailCases)(
-      "given %p as string argument and should fail",
-      (keyToFail) => {
-        inputToOutputMap[keyToFail] = "str"
-        core.getInput = jest.fn((inputName) => {
-          return inputToOutputMap[inputName]
-        });
-        core.getBooleanInput = jest.fn((inputName) => {
-          return inputToOutputMap[inputName]
-        });
+        inputToOutputMap['access-id'] = '1234'
+        inputToOutputMap['access-type'] = ''
+
+        mockCoreInput(inputToOutputMap);
+
         expect(() => {
-          input.fetchAndValidateInput();
-        }).toThrow(`Input ${keyToFail} should be a bool`);
-      }
-  )
+            input.fetchAndValidateInput();
+        }).toThrow('you must provide access-type');
 
-  it.each(secretsFailCases)(
-      "given %p as int argument and should fail",
-      (keyToFail) => {
-        inputToOutputMap[keyToFail] = 123
-        core.getInput = jest.fn((inputName) => {
-          return inputToOutputMap[inputName]
-        });
-        core.getBooleanInput = jest.fn((inputName) => {
-          return inputToOutputMap[inputName]
-        });
+        inputToOutputMap['access-id'] = '1234'
+        inputToOutputMap['access-type'] = 'bla'
+
+        mockCoreInput(inputToOutputMap);
+
         expect(() => {
-          input.fetchAndValidateInput();
-        }).toThrow(`Input ${keyToFail} should be a serialized JSON dictionary with the secret path as a key and the output name as the value`);
-      }
-  )
+            input.fetchAndValidateInput();
+        }).toThrow("access-type must be one of");
+    });
 
-    it.each(secretsFailCases)(
-        "given %p as invalid json argument and should fail",
-        (keyToFail) => {
-            inputToOutputMap[keyToFail] = '"This is a string"'
-            core.getInput = jest.fn((inputName) => {
-                return inputToOutputMap[inputName]
-            });
-            core.getBooleanInput = jest.fn((inputName) => {
-                return inputToOutputMap[inputName]
-            });
-            expect(() => {
-                input.fetchAndValidateInput();
-            }).toThrow(`Input ${keyToFail} did not contain a valid JSON dictionary`);
-        }
-    )
+    const inputTypes = [
+        { type: 'static-secrets', requiredFields: ['name', 'output-name'] },
+        { type: 'dynamic-secrets', requiredFields: ['name', 'output-name'] },
+        { type: 'rotated-secrets', requiredFields: ['name', 'output-name'] },
+        { type: 'ssh-certificates', requiredFields: ['name', 'cert-username', 'public-key-data', 'output-name'] },
+        { type: 'pki-certificates', requiredFields: ['name', 'csr-data-base64', 'output-name'] },
+    ];
 
-  it.each(certificatesFailCases)(
-      "given %p as int argument and should fail",
-      (keyToFail) => {
-        inputToOutputMap[keyToFail] = 123
-        core.getInput = jest.fn((inputName) => {
-          return inputToOutputMap[inputName]
+    inputTypes.forEach(({ type, requiredFields }) => {
+        requiredFields.forEach(requiredField => {
+            it(`should throw an error for missing required field '${requiredField}' in ${type}`, () => {
+                const modifiedInputMap = {...inputToOutputMap};
+                const secrets = yaml.load(modifiedInputMap[type]);
+                secrets.forEach(secret => delete secret[requiredField]);
+                modifiedInputMap[type] = yaml.dump(secrets);
+                mockCoreInput(modifiedInputMap);
+
+                expect(() => {
+                    input.fetchAndValidateInput();
+                }).toThrow(`Each item in ${type} must have the required field '${requiredField}'.`);
+            });
         });
-        core.getBooleanInput = jest.fn((inputName) => {
-          return inputToOutputMap[inputName]
-        });
-        expect(() => {
-          input.fetchAndValidateInput();
-        }).toThrow(`Input ${keyToFail} should be a serialized JSON with array of certificates params`);
-      }
-  )
+    });
 
-    it.each(certificatesFailCases)(
-        "given %p not as invalid json argument and should fail",
-        (keyToFail) => {
-            inputToOutputMap[keyToFail] = '["This is a string"]'
-            core.getInput = jest.fn((inputName) => {
-                return inputToOutputMap[inputName]
-            });
-            core.getBooleanInput = jest.fn((inputName) => {
-                return inputToOutputMap[inputName]
-            });
-            expect(() => {
-                input.fetchAndValidateInput();
-            }).toThrow(`Input ${keyToFail} did not contain a valid JSON with array of objects`);
-        }
-    )
-})
+    // Helper function to mock core.getInput
+    function mockCoreInput(inputMap) {
+        core.getInput.mockImplementation((inputName) => inputMap[inputName]);
+        core.getBooleanInput.mockImplementation((inputName) => inputMap[inputName]);
+    }
+});
+
