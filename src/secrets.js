@@ -2,6 +2,7 @@ const core = require('@actions/core');
 const akeylessApi = require('./akeyless_api');
 const akeyless = require('akeyless');
 
+
 async function handleExportSecrets(args) {
     const {
         akeylessToken,
@@ -233,4 +234,91 @@ function parseJson(jsonString) {
     }
 }
 
+async function handleCreateSecrets(args) {
+    const {
+        akeylessToken,
+        secretsToCreate,
+        apiUrl,
+    } = args;
+
+    if (!secretsToCreate || secretsToCreate.length === 0) {
+        core.info('No secrets to create. Skipping secret creation.');
+        return;
+    }
+
+    const api = akeylessApi.api(apiUrl);
+
+    for (const secret of secretsToCreate) {
+        const { name, value } = secret;
+
+        if (!name || !value) {
+            core.warning(`Skipping secret creation due to missing name or value: ${JSON.stringify(secret)}`);
+            continue;
+        }
+
+        const param = akeyless.CreateSecret.constructFromObject({
+            token: akeylessToken,
+            name,
+            value,
+            type: "generic",
+            format: "text",
+            accessibility: "regular",
+        });
+
+        try {
+            const result = await api.createSecret(param);
+            core.info(`Secret ${name} created successfully`);
+        } catch (error) {
+            core.warning(`Failed to create secret '${name}': ${typeof error === 'object' ? JSON.stringify(error) : error}`);
+        }
+    }
+}
+
+async function handleUpdateSecrets(args) {
+    const {
+        akeylessToken,
+        secretsToUpdate,
+        apiUrl,
+    } = args;
+
+    if (!secretsToUpdate || secretsToUpdate.length === 0) {
+        core.info('No secrets to update. Skipping secret update.');
+        return;
+    }
+
+    const api = akeylessApi.api(apiUrl);
+
+    for (const secret of secretsToUpdate) {
+        const { name, value } = secret;
+
+        if (!name || !value) {
+            core.warning(`Skipping secret update due to missing name or value: ${JSON.stringify(secret)}`);
+            continue;
+        }
+
+        const param = akeyless.UpdateSecretVal.constructFromObject({
+            token: akeylessToken,
+            name,
+            value,
+            format: "text",
+            accessibility: "regular",
+            json: false
+        });
+
+        try {
+            const result = await api.updateSecretVal(param);
+            core.info(`Secret ${name} updated successfully`);
+        } catch (error) {
+            core.warning(`Failed to update secret '${name}': ${typeof error === 'object' ? JSON.stringify(error) : error}`);
+        }
+    }
+}
+
+exports.handleUpdateSecrets = handleUpdateSecrets;
 exports.handleExportSecrets = handleExportSecrets
+exports.handleCreateSecrets = handleCreateSecrets;
+
+
+
+
+

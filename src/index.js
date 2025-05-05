@@ -1,12 +1,16 @@
 const core = require('@actions/core');
 const { akeylessLogin } = require('./auth')
 const input = require('./input');
-const { handleExportSecrets } = require('./secrets');
+const { handleExportSecrets, handleCreateSecrets, handleUpdateSecrets } = require('./secrets');
+
+
+
 
 async function run() {
-    core.debug(`Getting Input for Akeyless github action`);
+    core.debug(`Getting Input for Akeyless GitHub Action`);
 
-    const {accessId,
+    const {
+        accessId,
         accessType,
         apiUrl,
         staticSecrets,
@@ -17,18 +21,20 @@ async function run() {
         token,
         exportSecretsToOutputs,
         exportSecretsToEnvironment,
-        parseJsonSecrets} =
-        input.fetchAndValidateInput();
+        parseJsonSecrets,
+        secretsToCreate,
+        secretsToUpdate
+    } = input.fetchAndValidateInput();
 
-    core.debug(`access id: ${accessId}`);
-    core.debug(`Fetch akeyless token with access type ${accessType}`);
+    core.debug(`Access ID: ${accessId}`);
+    core.debug(`Fetching Akeyless token with access type: ${accessType}`);
 
     let akeylessToken;
     try {
-        if (token != "") {
-            akeylessToken = token
+        if (token !== '') {
+            akeylessToken = token;
         } else {
-            let akeylessLoginResponse = await akeylessLogin(accessId, accessType, apiUrl);
+            const akeylessLoginResponse = await akeylessLogin(accessId, accessType, apiUrl);
             akeylessToken = akeylessLoginResponse['token'];
         }
     } catch (error) {
@@ -37,7 +43,21 @@ async function run() {
         return;
     }
 
-    core.debug(`Akeyless token length: ${akeylessToken.length}`);
+    if (secretsToCreate.length > 0) {
+        await handleCreateSecrets({
+            akeylessToken,
+            secretsToCreate,
+            apiUrl,
+        });
+    }
+
+    if (secretsToUpdate.length > 0) {
+        await handleUpdateSecrets({
+            akeylessToken,
+            secretsToUpdate,
+            apiUrl,
+        });
+    }
 
     const args = {
         akeylessToken,
@@ -50,10 +70,11 @@ async function run() {
         sshCertificate,
         pkiCertificate,
         parseJsonSecrets
-    }
-    await handleExportSecrets(args)
+    };
 
-    core.debug(`done exporting secrets`);
+    await handleExportSecrets(args);
+
+    core.debug(`Done processing all secrets`);
 }
 
 if (require.main === module) {

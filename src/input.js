@@ -13,13 +13,31 @@ const fetchAndValidateInput = () => {
         sshCertificate: parseAndValidateSecrets('ssh-certificates', ['name', 'cert-username', 'public-key-data'], ['output-name', 'key', 'prefix-json-secrets']),
         pkiCertificate: parseAndValidateSecrets('pki-certificates', ['name', 'csr-data-base64'], ['output-name', 'key', 'prefix-json-secrets']),
         token: core.getInput('token'),
-        exportSecretsToOutputs: core.getBooleanInput('export-secrets-to-outputs', {default: true}),
-        exportSecretsToEnvironment: core.getBooleanInput('export-secrets-to-environment', {default: true}),
-        parseJsonSecrets: core.getBooleanInput('parse-json-secrets', {default: false})
+        exportSecretsToOutputs: core.getBooleanInput('export-secrets-to-outputs', { default: true }),
+        exportSecretsToEnvironment: core.getBooleanInput('export-secrets-to-environment', { default: true }),
+        parseJsonSecrets: core.getBooleanInput('parse-json-secrets', { default: false }),
     };
-    if (params['token'] == "") {
-        validateRequiredParamsWhenTokenNotExist(params['accessId'], params['accessType'])
+
+    if (params.token === '') {
+        validateRequiredParamsWhenTokenNotExist(params.accessId, params.accessType);
     }
+
+    // Add create secret input
+    const createSecretName = core.getInput('create-secret-name');
+    const createSecretValue = core.getInput('create-secret-value');
+    params.secretsToCreate = [];
+    if (createSecretName && createSecretValue) {
+        params.secretsToCreate.push({ name: createSecretName, value: createSecretValue });
+    }
+
+    // Add update secret input
+    const updateSecretName = core.getInput('update-secret-name');
+    const updateSecretValue = core.getInput('update-secret-value');
+    params.secretsToUpdate = [];
+    if (updateSecretName && updateSecretValue) {
+        params.secretsToUpdate.push({ name: updateSecretName, value: updateSecretValue });
+    }
+
     return params;
 };
 

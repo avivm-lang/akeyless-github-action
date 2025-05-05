@@ -65,6 +65,23 @@ inputs:
     default: false
     description: 'True/False to denote if environment variables should be created for each key/value pair in the JSON of the secret.'
 
+
+  create-secret-name:
+    description: "Name of the new secret to create"
+    required: false
+  create-secret-value:
+    description: "Value of the new secret to create"
+    required: false
+
+
+  update-secret-name:
+    description: "Name of the existing secret to update"
+    required: false
+  update-secret-value:
+    description: "New value to update the secret with"
+    required: false
+
+
 outputs:
   token:
     description: 'Akeyless Token'
