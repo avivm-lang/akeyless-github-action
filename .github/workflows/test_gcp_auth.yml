@@ -53,7 +53,15 @@ jobs:
           id_token_include_email: true
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
-
+      - name: Debug - manual Akeyless auth test
+        run: |
+          echo "Testing manual auth to Akeyless..."
+          TOKEN="${{ steps.gcp-auth.outputs.id_token }}"
+          CLOUD_ID=$(echo -n "$TOKEN" | base64 -w 0)
+          RESPONSE=$(curl -s -X POST "https://vault.dbk.akeyless.dev/auth" \
+            -H "Content-Type: application/json" \
+            -d "{\"access-type\": \"gcp\", \"access-id\": \"p-t0d5hos7sfxqgb\", \"cloud-id\": \"$CLOUD_ID\", \"gcp-audience\": \"akeyless.io\"}")
+          echo "Akeyless response: $RESPONSE"
       - name: Akeyless login - local action with fix (should PASS)
         uses: ./
         with:
