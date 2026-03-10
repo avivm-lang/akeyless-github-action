@@ -1,0 +1,32 @@
+name: Test GCP Auth (WIF)
+on:
+  workflow_dispatch:
+
+jobs:
+  reproduce-bug:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (Workload Identity)
+        id: gcp-auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: "id_token"
+          id_token_audience: "akeyless.io"
+          id_token_include_email: true
+          workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
+          service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
+
+      - name: Akeyless login - should FAIL with fetchIdToken error
+        uses: akeyless-community/akeyless-github-action@main
+        with:
+          access-id: "p-5otwephthl5sgl"
+          access-type: gcp
+          gcp-audience: "akeyless.io"
+          static-secrets: |
+            - name: "/akeyless-github-action"
+              output-name: "my_secret"
