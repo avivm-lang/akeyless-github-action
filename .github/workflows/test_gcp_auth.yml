@@ -26,7 +26,7 @@ jobs:
       - name: Akeyless login - published action without fix (should FAIL)
         uses: akeyless-community/akeyless-github-action@main
         with:
-          api-url: "https://vault.dbk.akeyless.dev"
+          api-url: "https://vault.dbk.akeyless.dev/api/v2"
           access-id: "p-t0d5hos7sfxqgb"
           access-type: gcp
           gcp-audience: "akeyless.io"
@@ -65,7 +65,7 @@ jobs:
       - name: Akeyless login - local action with fix (should PASS)
         uses: ./
         with:
-          api-url: "https://vault.dbk.akeyless.dev"
+          api-url: "https://vault.dbk.akeyless.dev/api/v2"
           access-id: "p-t0d5hos7sfxqgb"
           access-type: gcp
           gcp-audience: "akeyless.io"
