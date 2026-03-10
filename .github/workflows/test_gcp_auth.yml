@@ -26,11 +26,12 @@ jobs:
       - name: Akeyless login - published action without fix (should FAIL)
         uses: akeyless-community/akeyless-github-action@main
         with:
-          access-id: "p-5otwephthl5sgl"
+          api-url: "https://vault.dbk.akeyless.dev"
+          access-id: "p-t0d5hos7sfxqgb"
           access-type: gcp
           gcp-audience: "akeyless.io"
           static-secrets: |
-            - name: "/akeyless-github-action"
+            - name: "/gcp-wif-test"
               output-name: "my_secret"
 
   # Uses our LOCAL checkout which has the gcp-id-token fix
@@ -56,12 +57,13 @@ jobs:
       - name: Akeyless login - local action with fix (should PASS)
         uses: ./
         with:
-          access-id: "p-5otwephthl5sgl"
+          api-url: "https://vault.dbk.akeyless.dev"
+          access-id: "p-t0d5hos7sfxqgb"
           access-type: gcp
           gcp-audience: "akeyless.io"
           gcp-id-token: ${{ steps.gcp-auth.outputs.id_token }}
           static-secrets: |
-            - name: "/akeyless-github-action"
+            - name: "/gcp-wif-test"
               output-name: "my_secret"
 
       - name: Verify secret was fetched
