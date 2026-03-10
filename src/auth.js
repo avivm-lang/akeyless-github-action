@@ -53,11 +53,18 @@ async function azureLogin(apiUrl, accessId) {
 }
 
 async function gcpLogin(apiUrl, accessId) {
-    core.debug('getting gcp cloud id');
-    const gcpCloudId = await akeylessCloud.getCloudId('gcp')
     const gcpAudience = core.getInput('gcp-audience');
-    opts = {'access-id': accessId, 'access-type': 'gcp', 'cloud-id': gcpCloudId, 'gcp-audience': gcpAudience}
-    return loginHelper(opts, apiUrl)
+    const gcpIdToken = core.getInput('gcp-id-token');
+    let gcpCloudId;
+    if (gcpIdToken) {
+        core.debug('using provided gcp-id-token for GCP auth');
+        gcpCloudId = Buffer.from(gcpIdToken, 'utf8').toString('base64');
+    } else {
+        core.debug('getting gcp cloud id');
+        gcpCloudId = await akeylessCloud.getCloudId('gcp');
+    }
+    const opts = {'access-id': accessId, 'access-type': 'gcp', 'cloud-id': gcpCloudId, 'gcp-audience': gcpAudience};
+    return loginHelper(opts, apiUrl);
 }
 
 async function kubernetesLogin(apiUrl, accessId) {

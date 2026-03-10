@@ -26,6 +26,9 @@ inputs:
     description: 'GCP audience to use in signed JWT (relevant only for access-type=gcp)'
     default: 'akeyless.io'
     required: false
+  gcp-id-token:
+    description: 'GCP ID token (e.g. from google-github-actions/auth with workload identity). When set, used as cloud-id for GCP auth instead of getCloudId. Use with access-type=gcp for OIDC/Workload Identity flows where no service account key is available.'
+    required: false
   gateway-url:
     description: 'Gateway URL for the K8S authenticated (relevant only for access-type=k8s)'
     required: false
