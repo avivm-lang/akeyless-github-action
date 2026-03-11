@@ -3,8 +3,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Uses the PUBLISHED action (from main of the original repo) which has the bug
-  # Expected: FAIL with "Failed to login to Akeyless"
   reproduce-bug:
     runs-on: ubuntu-latest
     permissions:
@@ -26,16 +24,14 @@ jobs:
       - name: Akeyless login - published action without fix (should FAIL)
         uses: akeyless-community/akeyless-github-action@main
         with:
-          api-url: "https://vault.dbk.akeyless.dev/api/v2"
-          access-id: "p-t0d5hos7sfxqgb"
+          api-url: "https://vault.staging.akeyless.dev"
+          access-id: "p-cs4hofdili60gm"
           access-type: gcp
           gcp-audience: "akeyless.io"
           static-secrets: |
-            - name: "/gcp-wif-test"
+            - name: "gcp-wif-test-secret"
               output-name: "my_secret"
 
-  # Uses our LOCAL checkout which has the gcp-id-token fix
-  # Expected: PASS
   test-fix:
     runs-on: ubuntu-latest
     permissions:
@@ -53,25 +49,27 @@ jobs:
           id_token_include_email: true
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
+
       - name: Debug - manual Akeyless auth test
         run: |
           echo "Testing manual auth to Akeyless..."
           TOKEN="${{ steps.gcp-auth.outputs.id_token }}"
           CLOUD_ID=$(echo -n "$TOKEN" | base64 -w 0)
-          RESPONSE=$(curl -s -X POST "https://vault.dbk.akeyless.dev/auth" \
+          RESPONSE=$(curl -s -X POST "https://vault.staging.akeyless.dev/auth" \
             -H "Content-Type: application/json" \
-            -d "{\"access-type\": \"gcp\", \"access-id\": \"p-t0d5hos7sfxqgb\", \"cloud-id\": \"$CLOUD_ID\", \"gcp-audience\": \"akeyless.io\"}")
+            -d "{\"access-type\": \"gcp\", \"access-id\": \"p-cs4hofdili60gm\", \"cloud-id\": \"$CLOUD_ID\", \"gcp-audience\": \"akeyless.io\"}")
           echo "Akeyless response: $RESPONSE"
+
       - name: Akeyless login - local action with fix (should PASS)
         uses: ./
         with:
-          api-url: "https://vault.dbk.akeyless.dev/api/v2"
-          access-id: "p-t0d5hos7sfxqgb"
+          api-url: "https://vault.staging.akeyless.dev"
+          access-id: "p-cs4hofdili60gm"
           access-type: gcp
           gcp-audience: "akeyless.io"
           gcp-id-token: ${{ steps.gcp-auth.outputs.id_token }}
           static-secrets: |
-            - name: "/gcp-wif-test"
+            - name: "gcp-wif-test-secret"
               output-name: "my_secret"
 
       - name: Verify secret was fetched
