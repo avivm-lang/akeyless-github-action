@@ -24,7 +24,7 @@ jobs:
       - name: Akeyless login - published action without fix (should FAIL)
         uses: akeyless-community/akeyless-github-action@main
         with:
-          api-url: "https://vault.staging.akeyless.dev"
+          api-url: "https://api.staging.akeyless.dev"
           access-id: "p-cs4hofdili60gm"
           access-type: gcp
           gcp-audience: "akeyless.io"
@@ -55,7 +55,7 @@ jobs:
           echo "Testing manual auth to Akeyless..."
           TOKEN="${{ steps.gcp-auth.outputs.id_token }}"
           CLOUD_ID=$(echo -n "$TOKEN" | base64 -w 0)
-          RESPONSE=$(curl -s -X POST "https://vault.staging.akeyless.dev/auth" \
+          RESPONSE=$(curl -s -X POST "https://api.staging.akeyless.dev/auth" \
             -H "Content-Type: application/json" \
             -d "{\"access-type\": \"gcp\", \"access-id\": \"p-cs4hofdili60gm\", \"cloud-id\": \"$CLOUD_ID\", \"gcp-audience\": \"akeyless.io\"}")
           echo "Akeyless response: $RESPONSE"
@@ -63,7 +63,7 @@ jobs:
       - name: Akeyless login - local action with fix (should PASS)
         uses: ./
         with:
-          api-url: "https://vault.staging.akeyless.dev"
+          api-url: "https://api.staging.akeyless.dev"
           access-id: "p-cs4hofdili60gm"
           access-type: gcp
           gcp-audience: "akeyless.io"
