@@ -1,0 +1,81 @@
+name: Test GCP WIF Auth (Reproduce ASM-17037)
+on:
+  workflow_dispatch:
+
+jobs:
+  test_gcp_wif:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 1: Authenticate to GCP using Workload Identity Federation
+      - name: Authenticate to GCP via WIF
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
+          service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
+
+      # Step 2: This step WILL FAIL — reproduces the bug
+      - name: Akeyless Auth via GCP (expected to fail)
+        id: akeyless-gcp
+        uses: ./
+        continue-on-error: true
+        with:
+          access-id: "p-t0d5hos7sfxqgb"
+          access-type: gcp
+          api-url: "https://api.dbk.akeyless.dev"
+          gcp-audience: "akeyless.io"
+          static-secrets: |
+            - name: "/gcp-wif-test"
+              output-name: "my_secret"
+
+      - name: Check if Akeyless auth failed as expected
+        run: |
+          if [ "${{ steps.akeyless-gcp.outcome }}" == "failure" ]; then
+            echo "REPRODUCED: Akeyless GCP auth failed under WIF as expected"
+            echo "This confirms the bug in ASM-17037"
+          else
+            echo "UNEXPECTED: Akeyless GCP auth succeeded — the bug may already be fixed"
+          fi
+
+      # Step 3: Manual workaround — proves the token itself is valid
+      - name: Manual auth workaround (using ID token directly)
+        if: always()
+        run: |
+          CRED_FILE="${{ steps.gcp-auth.outputs.credentials_file_path }}"
+          echo "Credentials file: $CRED_FILE"
+          echo "Credentials type:"
+          cat "$CRED_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('type','unknown'))"
+
+          echo ""
+          echo "Attempting to get ID token via gcloud..."
+          gcloud auth login --cred-file="$CRED_FILE" --quiet 2>&1 || true
+          ID_TOKEN=$(gcloud auth print-identity-token --audiences=akeyless.io 2>&1) || true
+
+          if echo "$ID_TOKEN" | grep -q "eyJ"; then
+            CLOUD_ID=$(echo -n "$ID_TOKEN" | base64 -w0)
+            echo "Got ID token, length: ${#ID_TOKEN}"
+
+            RESPONSE=$(curl -s -X POST https://api.dbk.akeyless.dev/auth \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"access-id\": \"p-t0d5hos7sfxqgb\",
+                \"access-type\": \"gcp\",
+                \"cloud-id\": \"${CLOUD_ID}\",
+                \"gcp-audience\": \"akeyless.io\"
+              }")
+            if echo "$RESPONSE" | grep -q "token"; then
+              echo "WORKAROUND SUCCESS: Manual auth with ID token worked"
+            else
+              echo "WORKAROUND FAILED: $RESPONSE"
+            fi
+          else
+            echo "Could not get ID token: $ID_TOKEN"
+            echo "(This is expected — gcloud may not support WIF credential files for print-identity-token)"
+          fi
