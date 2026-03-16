@@ -95,7 +95,8 @@ async function loginHelper(opts, apiUrl) {
         const authResult = await api.auth(authBody)
         return authResult
     } catch (error) {
-        handleActionFail('Failed to login to Akeyless', `Failed to login to AKeyless: ${typeof error === 'object' ? JSON.stringify(error) : error}`)
+        const errMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+        handleActionFail(`Failed to login to Akeyless: ${errMsg}`, `Failed to login to AKeyless: ${errMsg}`)
     }
 }
 
