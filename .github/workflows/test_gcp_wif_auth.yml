@@ -23,7 +23,29 @@ jobs:
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
 
-      # Step 2: This step WILL FAIL — reproduces the bug
+      # Step 2a: Test via Node + akeyless-cloud-id + curl (bypasses the action)
+      - name: Test auth via Node + curl (direct client)
+        run: |
+          echo "Installing akeyless-cloud-id from fix branch..."
+          npm install github:akeylesslabs/akeyless-js-cloud-id#ASM-17037-github-actions-gcp-auth-wif --no-save
+          echo "Getting GCP cloud-id via akeyless-cloud-id..."
+          CLOUD_ID=$(node -e "
+            const akeylessCloud = require('akeyless-cloud-id');
+            akeylessCloud.getCloudId('gcp', 'akeyless.io').then(id => console.log(id)).catch(e => { console.error('getCloudId failed:', e.message); process.exit(1); });
+          ")
+          echo "Got cloud-id, length: ${#CLOUD_ID}"
+          echo "Calling Akeyless auth API..."
+          RESPONSE=$(curl -s -X POST https://api.dbk.akeyless.dev/auth \
+            -H "Content-Type: application/json" \
+            -d "{\"access-id\":\"p-t0d5hos7sfxqgb\",\"access-type\":\"gcp\",\"cloud-id\":\"$CLOUD_ID\",\"gcp-audience\":\"akeyless.io\"}")
+          echo "Akeyless response: $RESPONSE"
+          if echo "$RESPONSE" | grep -q "token"; then
+            echo "SUCCESS: Direct Node+curl auth worked"
+          else
+            echo "FAILED: Direct Node+curl auth - check response above"
+          fi
+
+      # Step 2b: This step WILL FAIL — reproduces the bug
       - name: Akeyless Auth via GCP (expected to fail)
         id: akeyless-gcp
         uses: ./
