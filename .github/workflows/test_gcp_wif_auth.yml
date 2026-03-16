@@ -23,6 +23,38 @@ jobs:
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
 
+      # Step 1b: Debug credential structure (for akeyless-js-cloud-id IAM fallback)
+      - name: Debug credential structure
+        run: |
+          CRED="${{ steps.gcp-auth.outputs.credentials_file_path }}"
+          echo "=== Credential file path: $CRED ==="
+          echo "=== Credential top-level keys ==="
+          node -e "
+            const fs = require('fs');
+            const d = JSON.parse(fs.readFileSync(process.env.CRED, 'utf8'));
+            console.log(JSON.stringify(Object.keys(d), null, 2));
+          "
+          echo ""
+          echo "=== service_account_impersonation_url ==="
+          node -e "
+            const fs = require('fs');
+            const d = JSON.parse(fs.readFileSync(process.env.CRED, 'utf8'));
+            const url = d.service_account_impersonation_url || d.service_account_impersonation?.url || d.service_account_impersonation?.token_url;
+            console.log(url || 'NOT FOUND');
+          "
+          echo ""
+          echo "=== Extracted SA name (what cloudid.js would use) ==="
+          node -e "
+            const fs = require('fs');
+            const d = JSON.parse(fs.readFileSync(process.env.CRED, 'utf8'));
+            const url = d.service_account_impersonation_url || d.service_account_impersonation?.url || d.service_account_impersonation?.token_url || '';
+            const m = url.match(/\/serviceAccounts\/([^:]+)/);
+            const name = m ? 'projects/-/serviceAccounts/' + m[1] : null;
+            console.log(name || 'COULD NOT EXTRACT');
+          "
+        env:
+          CRED: ${{ steps.gcp-auth.outputs.credentials_file_path }}
+
       # Step 2a: Test via Node + akeyless-cloud-id + curl (bypasses the action)
       - name: Test auth via Node + curl (direct client)
         run: |
