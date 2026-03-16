@@ -6,9 +6,9 @@ const path = require('path');
 const akeylessCloud = require('akeyless-cloud-id')
 
 function handleActionFail(message, debugMessage) {
-    core.debug(debugMessage);  // Only visible with ACTIONS_RUNNER_DEBUG=true
-    core.setFailed(message);   // Always visible
-    throw new Error(message);
+    const fullMessage = debugMessage ? `${message} - ${debugMessage}` : message;
+    core.setFailed(fullMessage);
+    throw new Error(fullMessage);
 }
 
 
@@ -95,8 +95,9 @@ async function loginHelper(opts, apiUrl) {
         const authResult = await api.auth(authBody)
         return authResult
     } catch (error) {
-        const errMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
-        handleActionFail(`Failed to login to Akeyless: ${errMsg}`, `Failed to login to AKeyless: ${errMsg}`)
+        const errMsg = error?.response?.body?.error || error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+        core.setFailed(`Failed to login to Akeyless: ${errMsg}`);
+        throw new Error(`Failed to login to Akeyless: ${errMsg}`);
     }
 }
 
