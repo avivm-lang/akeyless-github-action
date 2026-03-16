@@ -95,6 +95,7 @@ async function loginHelper(opts, apiUrl) {
         const authResult = await api.auth(authBody)
         return authResult
     } catch (error) {
+        console.error('Akeyless auth error:', error);
         const errMsg = error?.response?.body?.error || error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
         core.setFailed(`Failed to login to Akeyless: ${errMsg}`);
         throw new Error(`Failed to login to Akeyless: ${errMsg}`);
@@ -118,7 +119,8 @@ async function akeylessLogin(accessId, accessType, apiUrl) {
         core.debug('fetch token');
         return login[accessType](apiUrl, accessId);
     } catch (error) {
-        handleActionFail('failed to fetch token', error.message);
+        console.error('getCloudId/auth error:', error);
+        handleActionFail('failed to fetch token', error?.message || String(error));
     }
 }
 
