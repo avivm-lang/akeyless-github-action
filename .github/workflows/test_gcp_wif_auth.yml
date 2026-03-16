@@ -8,6 +8,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    env:
+      ACTIONS_RUNNER_DEBUG: "true"
 
     steps:
       - name: Checkout code
