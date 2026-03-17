@@ -55,7 +55,14 @@ async function azureLogin(apiUrl, accessId) {
 async function gcpLogin(apiUrl, accessId) {
     core.debug('getting gcp cloud id');
     const gcpAudience = core.getInput('gcp-audience') || 'akeyless.io';
-    const gcpCloudId = await akeylessCloud.getCloudId('gcp', gcpAudience);
+    let gcpCloudId;
+    try {
+        gcpCloudId = await akeylessCloud.getCloudId('gcp', gcpAudience);
+    } catch (err) {
+        console.error('akeylessCloud.getCloudId failed:', err);
+        throw err;
+    }
+    console.log('we get the gcpCloudId: ', gcpCloudId);
     const opts = {'access-id': accessId, 'access-type': 'gcp', 'cloud-id': gcpCloudId, 'gcp-audience': gcpAudience}
     return loginHelper(opts, apiUrl)
 }
