@@ -22,6 +22,7 @@ jobs:
         with:
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
+          create_credentials_file: true
 
       # Step 1b: Print input params BEFORE Akeyless auth
       - name: Print Akeyless auth input params
