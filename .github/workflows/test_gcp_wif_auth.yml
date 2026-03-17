@@ -24,6 +24,7 @@ jobs:
           service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
           create_credentials_file: true
           token_format: "id_token"
+          id_token_audience: "akeyless.io"
 
       # Step 1b: Print input params BEFORE Akeyless auth
       - name: Print Akeyless auth input params
