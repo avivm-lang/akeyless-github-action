@@ -14,7 +14,7 @@
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
     "akeyless": "^3.3.16",
-    "akeyless-cloud-id": "github:akeylesslabs/akeyless-js-cloud-id#83555bd3a911401eb6ecd2e98979b372d3a0229a",
+    "akeyless-cloud-id": "github:akeylesslabs/akeyless-js-cloud-id#7ecef2adf8fe516ace7ade4b3fd1b6b29a7e96b5",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
