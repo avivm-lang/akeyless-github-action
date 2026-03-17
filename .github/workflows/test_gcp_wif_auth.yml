@@ -23,62 +23,20 @@ jobs:
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "aviv-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
 
-      # Step 1b: Debug credential structure (for akeyless-js-cloud-id IAM fallback)
-      - name: Debug credential structure
+      # Step 1b: Print input params BEFORE Akeyless auth
+      - name: Print Akeyless auth input params
         run: |
-          CRED="${{ steps.gcp-auth.outputs.credentials_file_path }}"
-          echo "=== Credential file path: $CRED ==="
-          echo "=== Credential top-level keys ==="
-          node -e "
-            const fs = require('fs');
-            const d = JSON.parse(fs.readFileSync(process.env.CRED, 'utf8'));
-            console.log(JSON.stringify(Object.keys(d), null, 2));
-          "
-          echo ""
-          echo "=== service_account_impersonation_url ==="
-          node -e "
-            const fs = require('fs');
-            const d = JSON.parse(fs.readFileSync(process.env.CRED, 'utf8'));
-            const url = d.service_account_impersonation_url || d.service_account_impersonation?.url || d.service_account_impersonation?.token_url;
-            console.log(url || 'NOT FOUND');
-          "
-          echo ""
-          echo "=== Extracted SA name (what cloudid.js would use) ==="
-          node -e "
-            const fs = require('fs');
-            const d = JSON.parse(fs.readFileSync(process.env.CRED, 'utf8'));
-            const url = d.service_account_impersonation_url || d.service_account_impersonation?.url || d.service_account_impersonation?.token_url || '';
-            const m = url.match(/\/serviceAccounts\/([^:]+)/);
-            const name = m ? 'projects/-/serviceAccounts/' + m[1] : null;
-            console.log(name || 'COULD NOT EXTRACT');
-          "
-        env:
-          CRED: ${{ steps.gcp-auth.outputs.credentials_file_path }}
+          echo "=== BEFORE Akeyless auth - input params ==="
+          echo "access-id: p-t0d5hos7sfxqgb"
+          echo "access-type: gcp"
+          echo "api-url: https://api.dbk.akeyless.dev"
+          echo "gcp-audience: akeyless.io"
+          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+          echo "Credentials file exists: $([ -f "$GOOGLE_APPLICATION_CREDENTIALS" ] && echo yes || echo no)"
+          echo "============================================"
 
-      # Step 2a: Test via Node + akeyless-cloud-id + curl (bypasses the action)
-      - name: Test auth via Node + curl (direct client)
-        run: |
-          echo "Installing akeyless-cloud-id from fix branch..."
-          npm install github:akeylesslabs/akeyless-js-cloud-id#ASM-17037-github-actions-gcp-auth-wif --no-save
-          echo "Getting GCP cloud-id via akeyless-cloud-id..."
-          CLOUD_ID=$(node -e "
-            const akeylessCloud = require('akeyless-cloud-id');
-            akeylessCloud.getCloudId('gcp', 'akeyless.io').then(id => console.log(id)).catch(e => { console.error('getCloudId failed:', e.message); process.exit(1); });
-          ")
-          echo "Got cloud-id, length: ${#CLOUD_ID}"
-          echo "Calling Akeyless auth API..."
-          RESPONSE=$(curl -s -X POST https://api.dbk.akeyless.dev/auth \
-            -H "Content-Type: application/json" \
-            -d "{\"access-id\":\"p-t0d5hos7sfxqgb\",\"access-type\":\"gcp\",\"cloud-id\":\"$CLOUD_ID\",\"gcp-audience\":\"akeyless.io\"}")
-          echo "Akeyless response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q "token"; then
-            echo "SUCCESS: Direct Node+curl auth worked"
-          else
-            echo "FAILED: Direct Node+curl auth - check response above"
-          fi
-
-      # Step 2b: This step WILL FAIL — reproduces the bug
-      - name: Akeyless Auth via GCP (expected to fail)
+      # Step 2: This step FAIL — reproduces the bug
+      - name: Akeyless Auth via GCP (fail)
         id: akeyless-gcp
         uses: ./
         continue-on-error: true
@@ -90,6 +48,16 @@ jobs:
           static-secrets: |
             - name: "/gcp-wif-test"
               output-name: "my_secret"
+
+      # Step 2b: Print error pointer when auth fails
+      - name: Error summary (see failed step above for details)
+        if: steps.akeyless-gcp.outcome == 'failure'
+        run: |
+          echo "=== ERROR: Akeyless auth failed ==="
+          echo "The error is in the 'Akeyless Auth via GCP (fail)' step output above."
+          echo "Source: akeyless-js-cloud-id (GCP token fetch) or auth.js (Akeyless API)."
+          echo "Look for: 'Cannot fetch ID token' = cloudid.js ; 'Failed to login to Akeyless' = auth.js"
+          echo "=========================="
 
       - name: Check if Akeyless auth failed as expected
         run: |
