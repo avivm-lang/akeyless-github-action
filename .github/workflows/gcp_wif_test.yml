@@ -30,7 +30,7 @@ jobs:
         with:
           access-id: "p-27xqnb0jl0segm"
           access-type: gcp
-          api-url: "https://api.dbk.akeyless.dev"
+          api-url: "https://api.akeyless.io"
           gcp-audience: akeyless.io
           static-secrets: |
             - name: "/gcp-wif-test"
