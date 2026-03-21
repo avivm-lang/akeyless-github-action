@@ -1,0 +1,37 @@
+# Minimal workflow to verify GCP Workload Identity Federation (WIF) auth works end-to-end.
+# TODO: Replace with repo secrets for generic use (GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, AKEYLESS_ACCESS_ID, AKEYLESS_API_URL)
+name: Auth GCP WIF to Akeyless Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test_gcp_wif:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP via WIF
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
+          service_account: "akeyless-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
+          create_credentials_file: true
+          token_format: id_token
+          id_token_audience: akeyless.io
+
+      - name: Akeyless Auth via GCP
+        uses: ./
+        with:
+          access-id: "p-27xqnb0jl0segm"
+          access-type: gcp
+          api-url: "https://api.akeyless.io"
+          gcp-audience: akeyless.io
+          static-secrets: |
+            - name: "/gcp-wif-test"
+              output-name: "my_secret"
