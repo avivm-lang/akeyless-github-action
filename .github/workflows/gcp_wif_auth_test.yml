@@ -26,7 +26,7 @@ jobs:
           id_token_audience: akeyless.io
 
       - name: Akeyless Auth via GCP
-        uses: akeyless-community/akeyless-github-action@43ecc17479747f00b3590e167f6b17cc3e9534e5
+        uses: akeyless-community/akeyless-github-action@b47c5a3fa0898adf2be212a671aa334106fd8d67
         with:
           access-id: "p-27xqnb0jl0segm"
           access-type: gcp
