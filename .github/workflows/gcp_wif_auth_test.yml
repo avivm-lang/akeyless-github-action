@@ -8,6 +8,8 @@ on:
 jobs:
   test_gcp_wif:
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_STEP_DEBUG: 'true'
     permissions:
       id-token: write
       contents: read
