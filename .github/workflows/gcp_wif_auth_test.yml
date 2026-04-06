@@ -1,7 +1,6 @@
-name: Akeyless GCP WIF
+name: Aviv_Akeyless_GCP_WIF
 on:
   workflow_dispatch:
-
 jobs:
   fetch_secrets:
     runs-on: ubuntu-latest
@@ -11,7 +10,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       # 1. Exchange GitHub OIDC for a GCP ID Token
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
@@ -20,20 +18,19 @@ jobs:
           token_format: 'id_token'
           id_token_audience: 'akeyless.io'
           id_token_include_email: true
-          workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
-          service_account: "akeyless-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
-
+          workload_identity_provider: "projects/365490161070/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          service_account: "akeyless-wif-sa@customer-success-391112.iam.gserviceaccount.com"
       # 2. Use the GCP Token to fetch secrets via Akeyless WIF (v1.1.5)
       - name: Fetch static secrets from Akeyless
         uses: akeyless-community/akeyless-github-action@v1.1.5
         id: fetch-secrets
         with:
-          access-id: "p-27xqnb0jl0segm"
+          access-id: "p-l8591cz9gcpzgm"
           access-type: gcp
           api-url: "https://api.akeyless.io"
           gcp-audience: 'akeyless.io'
           static-secrets: |
-            - name: "/gcp-wif-test"
+            - name: "/Cloud/GCP/gcp_iam_wif/static_secret"
               output-name: "my_secret"
       # 3. Use Akeyless secret (Exact run step from your request)
       - name: Use Akeyless secret
