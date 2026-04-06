@@ -1,36 +1,44 @@
-# Minimal workflow to verify GCP Workload Identity Federation (WIF) auth works end-to-end.
-# TODO: Replace with repo secrets for generic use (GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, AKEYLESS_ACCESS_ID, AKEYLESS_API_URL)
-name: Auth GCP WIF to Akeyless Test
-
+name: Akeyless GCP WIF
 on:
   workflow_dispatch:
 
 jobs:
-  test_gcp_wif:
+  fetch_secrets:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Authenticate to GCP via WIF
-        uses: google-github-actions/auth@v2
+      # 1. Exchange GitHub OIDC for a GCP ID Token
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
         with:
+          token_format: 'id_token'
+          id_token_audience: 'akeyless.io'
+          id_token_include_email: true
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "akeyless-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
-          token_format: id_token
-          id_token_audience: akeyless.io
 
-      - name: Akeyless Auth via GCP
+      # 2. Use the GCP Token to fetch secrets via Akeyless WIF (v1.1.5)
+      - name: Fetch static secrets from Akeyless
         uses: akeyless-community/akeyless-github-action@v1.1.5
+        id: fetch-secrets
         with:
           access-id: "p-27xqnb0jl0segm"
           access-type: gcp
           api-url: "https://api.akeyless.io"
-          gcp-audience: akeyless.io
+          gcp-audience: 'akeyless.io'
           static-secrets: |
             - name: "/gcp-wif-test"
               output-name: "my_secret"
+      # 3. Use Akeyless secret (Exact run step from your request)
+      - name: Use Akeyless secret
+        run: |
+            echo "Step Outputs"
+            echo "my_first_secret: ${{ steps.fetch-secrets.outputs.my_first_secret }}" >> secrets.txt
+            echo "Environment Variables"
+            echo "my_first_secret: ${{ env.my_first_secret }}" >> secrets.txt
