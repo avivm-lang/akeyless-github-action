@@ -27,7 +27,6 @@ jobs:
           create_credentials_file: true
           token_format: id_token
           id_token_audience: akeyless.io
-          id_token_include_email: true
 
       - name: Debug Akeyless /auth
         shell: bash
@@ -39,7 +38,7 @@ jobs:
           test -n "$RAW"
           ENC=$(printf '%s' "$RAW" | base64 | tr -d '\n')
           echo "::add-mask::$RAW"
-          BODY=$(jq -n --arg id 'p-27xqnb0jl0segmD' --arg cid "$ENC" --arg aud 'akeyless.io' \
+          BODY=$(jq -n --arg id 'p-27xqnb0jl0segm' --arg cid "$ENC" --arg aud 'akeyless.io' \
             '{ "access-id": $id, "access-type": "gcp", "cloud-id": $cid, "gcp-audience": $aud }')
           code=$(curl -sS -o auth_resp.json -w '%{http_code}' -X POST "$AKEYLESS_API_URL/auth" \
             -H 'Content-Type: application/json' -d "$BODY")
@@ -48,7 +47,7 @@ jobs:
       - name: Akeyless Auth via GCP
         uses: akeyless-community/akeyless-github-action@v1.1.5
         with:
-          access-id: "p-27xqnb0jl0segmD"
+          access-id: "p-27xqnb0jl0segm"
           access-type: gcp
           api-url: "https://api.akeyless.io"
           gcp-audience: akeyless.io
