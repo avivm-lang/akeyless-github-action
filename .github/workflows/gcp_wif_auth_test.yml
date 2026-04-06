@@ -18,7 +18,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Authenticate to GCP via WIF
+      - id: auth
+        name: Authenticate to GCP via WIF
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
@@ -26,6 +27,23 @@ jobs:
           create_credentials_file: true
           token_format: id_token
           id_token_audience: akeyless.io
+          id_token_include_email: true
+
+      - name: Debug Akeyless /auth
+        shell: bash
+        env:
+          AKEYLESS_API_URL: https://api.akeyless.io
+        run: |
+          set -euo pipefail
+          RAW='${{ steps.auth.outputs.id_token }}'
+          test -n "$RAW"
+          ENC=$(printf '%s' "$RAW" | base64 | tr -d '\n')
+          echo "::add-mask::$RAW"
+          BODY=$(jq -n --arg id 'p-27xqnb0jl0segmD' --arg cid "$ENC" --arg aud 'akeyless.io' \
+            '{ "access-id": $id, "access-type": "gcp", "cloud-id": $cid, "gcp-audience": $aud }')
+          code=$(curl -sS -o auth_resp.json -w '%{http_code}' -X POST "$AKEYLESS_API_URL/auth" \
+            -H 'Content-Type: application/json' -d "$BODY")
+          echo "Akeyless /auth HTTP $code" && (jq . auth_resp.json || cat auth_resp.json)
 
       - name: Akeyless Auth via GCP
         uses: akeyless-community/akeyless-github-action@v1.1.5
