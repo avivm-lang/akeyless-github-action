@@ -16,7 +16,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Authenticate to GCP via WIF
+      - id: auth
+        name: Authenticate to GCP via WIF
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
@@ -29,12 +30,16 @@ jobs:
         shell: bash
         run: |
           RAW_ID_TOKEN='${{ steps.auth.outputs.id_token }}'
+          if [ -z "$RAW_ID_TOKEN" ]; then
+            echo "Raw token is empty"
+            exit 1
+          fi
           ENCODED_TOKEN=$(printf '%s' "$RAW_ID_TOKEN" | base64 | tr -d '\n')
           echo "::add-mask::$RAW_ID_TOKEN"
           echo "::add-mask::$ENCODED_TOKEN"
           echo "Raw token length: ${#RAW_ID_TOKEN}"
           echo "Base64 token length: ${#ENCODED_TOKEN}"
-          echo "Raw token prefix: ${RAW_ID_TOKEN:0:20}..."    
+          echo "Raw token prefix: ${RAW_ID_TOKEN:0:20}..." 
 
       - name: Akeyless Auth via GCP
         uses: akeyless-community/akeyless-github-action@v1.1.5
