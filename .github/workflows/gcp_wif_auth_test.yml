@@ -21,7 +21,6 @@ jobs:
         with:
           workload_identity_provider: "projects/717477426588/locations/global/workloadIdentityPools/akeyless-gh-action-test/providers/github-oidc"
           service_account: "akeyless-gh-action-test@akeyless-test-env.iam.gserviceaccount.com"
-          create_credentials_file: true
           token_format: id_token
           id_token_audience: akeyless.io
 
