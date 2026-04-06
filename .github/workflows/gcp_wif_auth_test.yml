@@ -4,6 +4,8 @@ on:
 jobs:
   fetch_secrets:
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_STEP_DEBUG: 'true'
     permissions:
       id-token: write
       contents: read
