@@ -25,6 +25,17 @@ jobs:
           token_format: id_token
           id_token_audience: akeyless.io
 
+      - name: Debug raw GCP ID token
+        shell: bash
+        run: |
+          RAW_ID_TOKEN='${{ steps.auth.outputs.id_token }}'
+          ENCODED_TOKEN=$(printf '%s' "$RAW_ID_TOKEN" | base64 | tr -d '\n')
+          echo "::add-mask::$RAW_ID_TOKEN"
+          echo "::add-mask::$ENCODED_TOKEN"
+          echo "Raw token length: ${#RAW_ID_TOKEN}"
+          echo "Base64 token length: ${#ENCODED_TOKEN}"
+          echo "Raw token prefix: ${RAW_ID_TOKEN:0:20}..."    
+
       - name: Akeyless Auth via GCP
         uses: akeyless-community/akeyless-github-action@v1.1.5
         with:
