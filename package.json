@@ -14,7 +14,7 @@
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
     "akeyless": "^3.3.16",
-    "akeyless-cloud-id": "github:akeylesslabs/akeyless-js-cloud-id#ASM-19459-aws-sdk-v3-upgrade",
+    "akeyless-cloud-id": "2.5.2",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
