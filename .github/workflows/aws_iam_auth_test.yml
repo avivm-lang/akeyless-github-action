@@ -1,5 +1,3 @@
-# Test AWS IAM cloud-id (v3 branch) via this Action.
-# package.json must point at the cloud-id branch; this job rebuilds dist.
 name: Auth AWS IAM to Akeyless Test
 
 on:
@@ -38,7 +36,7 @@ jobs:
         with:
           access-id: ${{ secrets.AKEYLESS_AWS_ACCESS_ID }}
           access-type: aws_iam
-          api-url: ${{ secrets.AKEYLESS_API_URL }}
+          api-url: "https://api.akeyless.io"
           static-secrets: |
-            - name: "${{ secrets.AKEYLESS_TEST_SECRET }}"
+            - name: "/aws-cloud-id-test"
               output-name: "my_secret"
